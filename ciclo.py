@@ -1,4 +1,3 @@
-from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 import functools
 from re import U
@@ -98,7 +97,7 @@ Callback = Callable[
     [State, Batch, Elapsed, "Loop"], Optional[Tuple[Optional[Logs], Optional[State]]]
 ]
 InputCallable = Union[Callable, PeriodicAction]
-ScheduleCallbacks = Dict[Schedule, Union[InputCallable, List[InputCallable]]]
+ScheduleCallbacks = Dict[Schedule, List[InputCallable]]
 
 
 def create_callback(f: InputCallable) -> Callback:
@@ -152,6 +151,7 @@ class Loop:
         self.initial_samples = initial_samples
         self.logs: Optional[Logs] = None
         self.history = history or []
+        self.elapsed: Optional[Elapsed] = None
 
     def run(
         self,
@@ -160,9 +160,13 @@ class Loop:
         schedule_callbacks: ScheduleCallbacks,
         *,
         stop: Union[Period, int, None] = None,
+        on_start: Optional[List[InputCallable]] = None,
+        on_end: Optional[List[InputCallable]] = None,
     ) -> State:
 
-        elapsed = Elapsed.create(steps=self.initial_steps, samples=self.initial_samples)
+        self.elapsed = Elapsed.create(
+            steps=self.initial_steps, samples=self.initial_samples
+        )
 
         if isinstance(stop, int):
             stop = Period(steps=stop)
@@ -177,37 +181,58 @@ class Loop:
                 ]
                 for schedule, callbacks in schedule_callbacks.items()
             }
+            batch = None
 
             for i, batch in enumerate(dataset):
                 batch_size = get_batch_size(batch)
-                elapsed = elapsed.update_samples(batch_size)
+                self.elapsed = self.elapsed.update_samples(batch_size)
+
+                # call on_start on first batch
+                if i == 0 and on_start is not None:
+                    self.logs = {}
+                    for callback in on_start:
+                        callback = create_callback(callback)
+                        self._call_callback(callback, batch)
 
                 self.logs = {}
-
                 for schedule, callbacks in schedule_callbacks_.items():
-                    if schedule(elapsed):
+                    if schedule(self.elapsed):
                         for callback in callbacks:
-                            elapsed = elapsed.update_time()
-                            output = callback(self.state, batch, elapsed, self)
-                            if output is not None:
-                                out_logs, out_state = output
-                                if out_state is not None:
-                                    self.state = out_state
-                                if out_logs is not None:
-                                    self.logs.update(out_logs)
+                            self._call_callback(callback, batch)
 
-                elapsed = elapsed.update_steps()
+                self.elapsed = self.elapsed.update_steps()
                 if self.logs:
-                    self.logs["elapsed"] = elapsed
+                    self.logs["elapsed"] = self.elapsed
                     self.history.append(self.logs)
 
-                if stop is not None and stop >= elapsed:
+                if stop is not None and stop >= self.elapsed:
                     break
+
+            # call on_end on last batch
+            if on_end is not None:
+                self.logs = {}
+                for callback in on_end:
+                    callback = create_callback(callback)
+                    self._call_callback(callback, batch)
 
             return self.state
         finally:
             self.state = None
             self.logs = None
+            self.elapsed = None
+
+    def _call_callback(self, callback: Callback, batch: Batch):
+        assert self.logs is not None
+        assert self.elapsed is not None
+
+        self.elapsed = self.elapsed.update_time()
+        output = callback(self.state, batch, self.elapsed, self)
+        if output is not None:
+            out_logs, out_state = output
+            if out_state is not None:
+                self.state = out_state
+            if out_logs is not None:
+                self.logs.update(out_logs)
 
 
 def loop(
@@ -219,11 +244,15 @@ def loop(
     initial_steps: int = 0,
     initial_samples: int = 0,
     history: Optional[LogHistory] = None,
+    on_start: Optional[List[InputCallable]] = None,
+    on_end: Optional[List[InputCallable]] = None,
 ) -> Tuple[State, Loop]:
     loop = Loop(
         initial_steps=initial_steps, initial_samples=initial_samples, history=history
     )
-    state = loop.run(state, dataset, schedule_callbacks, stop=stop)
+    state = loop.run(
+        state, dataset, schedule_callbacks, stop=stop, on_start=on_start, on_end=on_end
+    )
     return state, loop
 
 
@@ -273,7 +302,7 @@ class inner_loop:
         name_or_loop_fn: str,
         maybe_loop_fn: Callable[[State], Tuple[State, Loop]],
         *,
-        reset_fn: Optional[Callable[[State], State]] = None,
+        output_state: bool = False,
     ):
         ...
 
@@ -282,7 +311,7 @@ class inner_loop:
         self,
         name_or_loop_fn: Callable[[State], Tuple[State, Loop]],
         *,
-        reset_fn: Optional[Callable[[State], State]] = None,
+        output_state: bool = False,
     ):
         ...
 
@@ -291,7 +320,7 @@ class inner_loop:
         name_or_loop_fn: Union[str, Callable[[State], Tuple[State, Loop]]],
         maybe_loop_fn: Optional[Callable[[State], Tuple[State, Loop]]] = None,
         *,
-        reset_fn: Optional[Callable[[State], State]] = None,
+        output_state: bool = False,
     ):
         if isinstance(name_or_loop_fn, str):
             assert maybe_loop_fn is not None
@@ -301,11 +330,9 @@ class inner_loop:
             assert maybe_loop_fn is None
             self.name = None
             self.loop_fn = name_or_loop_fn
-        self.reset_fn = reset_fn
+        self.output_state = output_state
 
     def __call__(self, state, batch, elapsed: Elapsed, loop):
-        if self.reset_fn is not None:
-            state = self.reset_fn(state)
         state, inner_loop = self.loop_fn(state)
         logs = inner_loop.history[-1]
         logs = {
@@ -313,9 +340,8 @@ class inner_loop:
             for k, v in logs.items()
             if not isinstance(v, Elapsed)
         }
-        if self.reset_fn is not None:
-            state = self.reset_fn(state)
-        return logs, state
+
+        return logs, state if self.output_state else None
 
 
 class tqdm_bar:

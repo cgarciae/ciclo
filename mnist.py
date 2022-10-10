@@ -52,6 +52,8 @@ class TrainState(train_state.TrainState):
 
 @jax.jit
 def train_step(state: TrainState, batch, _):
+    print("jitting train_step")
+
     def loss_fn(params):
         logits = state.apply_fn({"params": params}, batch["image"])
         loss = optax.softmax_cross_entropy_with_integer_labels(
@@ -67,11 +69,13 @@ def train_step(state: TrainState, batch, _):
 
 @jax.jit
 def compute_metrics(state: TrainState, batch, _):
+    print("jitting compute_metrics")
     return state.metrics.compute(), None
 
 
 @jax.jit
 def eval_step(state: TrainState, batch, _):
+    print("jitting eval_step")
     logits = state.apply_fn({"params": state.params}, batch["image"])
     loss = optax.softmax_cross_entropy_with_integer_labels(
         logits=logits, labels=batch["label"]
@@ -79,6 +83,10 @@ def eval_step(state: TrainState, batch, _):
     metrics = state.metrics.update(loss=loss, logits=logits, labels=batch["label"])
     logs = metrics.compute()
     return logs, state.replace(metrics=metrics)
+
+
+def reset_metrics(state: TrainState, batch, _):
+    return None, state.replace(metrics=state.metrics.empty())
 
 
 # Initialize state
@@ -94,22 +102,22 @@ state = TrainState.create(
 # training loop
 total_steps = 10_000
 eval_steps = 1_000
-log_steps = 100
+log_steps = 200
 eval_loop = ciclo.inner_loop(
     "valid",
     lambda state: ciclo.loop(
         state,
         ds_valid.as_numpy_iterator(),
         {ciclo.every(1): [eval_step]},
+        on_start=[reset_metrics],
     ),
-    reset_fn=lambda state: state.replace(metrics=state.metrics.empty()),
 )
 state, loop = ciclo.loop(
     state,
     ds_train.as_numpy_iterator(),
     {
         ciclo.every(1): [train_step],
-        ciclo.every(log_steps): [compute_metrics],
+        ciclo.every(log_steps): [compute_metrics, reset_metrics],
         ciclo.every(eval_steps): [eval_loop],
         ciclo.every(1): [ciclo.keras_bar(total=total_steps, always_stateful=True)],
     },

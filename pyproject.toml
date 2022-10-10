@@ -1,0 +1,18 @@
+[tool.poetry]
+name = "ciclo"
+version = "0.1.0"
+description = ""
+authors = ["Cristian Garcia <cgarcia.e88@gmail.com>"]
+license = "MIT"
+
+[tool.poetry.dependencies]
+python = "^3.8"
+jax = "*"
+flax = "*"
+
+[tool.poetry.dev-dependencies]
+tensorflow-cpu = "*"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
