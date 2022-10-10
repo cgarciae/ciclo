@@ -52,8 +52,6 @@ class TrainState(train_state.TrainState):
 
 @jax.jit
 def train_step(state: TrainState, batch, _):
-    print("jitting train_step")
-
     def loss_fn(params):
         logits = state.apply_fn({"params": params}, batch["image"])
         loss = optax.softmax_cross_entropy_with_integer_labels(
@@ -69,13 +67,11 @@ def train_step(state: TrainState, batch, _):
 
 @jax.jit
 def compute_metrics(state: TrainState, batch, _):
-    print("jitting compute_metrics")
     return state.metrics.compute(), None
 
 
 @jax.jit
 def eval_step(state: TrainState, batch, _):
-    print("jitting eval_step")
     logits = state.apply_fn({"params": state.params}, batch["image"])
     loss = optax.softmax_cross_entropy_with_integer_labels(
         logits=logits, labels=batch["label"]

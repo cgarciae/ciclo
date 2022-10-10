@@ -14,11 +14,21 @@ from typing import (
     overload,
 )
 import inspect
-from clu.periodic_actions import PeriodicAction
 from pkbar import Kbar
 from tqdm import tqdm
 from flax.struct import PyTreeNode
 import jax
+from importlib import util
+
+# find if clu can be imported using importlib
+
+if util.find_spec("clu") is not None:
+    from clu.periodic_actions import PeriodicAction
+else:
+
+    class PeriodicAction:
+        def __call__(self, step: int, t: Optional[float] = None) -> bool:
+            ...
 
 
 class Elapsed(PyTreeNode):
@@ -97,7 +107,8 @@ Callback = Callable[
     [State, Batch, Elapsed, "Loop"], Optional[Tuple[Optional[Logs], Optional[State]]]
 ]
 InputCallable = Union[Callable, PeriodicAction]
-ScheduleCallbacks = Dict[Schedule, List[InputCallable]]
+ScheduleCallable = Dict[Schedule, List[InputCallable]]
+ScheduleCallback = Dict[Schedule, List[Callback]]
 
 
 def create_callback(f: InputCallable) -> Callback:
@@ -106,7 +117,7 @@ def create_callback(f: InputCallable) -> Callback:
 
         @functools.wraps(f)
         def wrapper(state: State, batch: Batch, elapsed: Elapsed, loop: Loop):
-            f(elapsed.steps)
+            f(elapsed.steps, t=elapsed.date)
 
     else:
         sig = inspect.signature(f)
@@ -157,7 +168,7 @@ class Loop:
         self,
         state: State,
         dataset,
-        schedule_callbacks: ScheduleCallbacks,
+        schedule_callbacks: ScheduleCallable,
         *,
         stop: Union[Period, int, None] = None,
         on_start: Optional[List[InputCallable]] = None,
@@ -167,20 +178,15 @@ class Loop:
         self.elapsed = Elapsed.create(
             steps=self.initial_steps, samples=self.initial_samples
         )
+        schedule_callbacks_: ScheduleCallback = {
+            schedule: [create_callback(f) for f in callbacks]
+            for schedule, callbacks in schedule_callbacks.items()
+        }
 
         if isinstance(stop, int):
             stop = Period(steps=stop)
         try:
             self.state = state
-            schedule_callbacks_: Dict[Schedule, List[Callback]] = {
-                schedule: [
-                    create_callback(callback)
-                    for callback in (
-                        callbacks if isinstance(callbacks, list) else [callbacks]
-                    )
-                ]
-                for schedule, callbacks in schedule_callbacks.items()
-            }
             batch = None
 
             for i, batch in enumerate(dataset):
@@ -238,7 +244,7 @@ class Loop:
 def loop(
     state: State,
     dataset,
-    schedule_callbacks: ScheduleCallbacks,
+    schedule_callbacks: ScheduleCallable,
     *,
     stop: Union[Period, int, None] = None,
     initial_steps: int = 0,
