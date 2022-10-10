@@ -1,5 +1,9 @@
-from datetime import datetime, timedelta
+__version__ = "0.1.0"
+
 import functools
+import inspect
+from datetime import datetime, timedelta
+from importlib import util
 from re import U
 from typing import (
     Any,
@@ -13,12 +17,11 @@ from typing import (
     Union,
     overload,
 )
-import inspect
+
+import jax
+from flax.struct import PyTreeNode
 from pkbar import Kbar
 from tqdm import tqdm
-from flax.struct import PyTreeNode
-import jax
-from importlib import util
 
 # find if clu can be imported using importlib
 

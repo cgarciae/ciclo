@@ -1,23 +1,23 @@
 [tool.poetry]
 name = "ciclo"
-version = "0.1.0"
+version = "0.1.1"
 description = ""
 authors = ["Cristian Garcia <cgarcia.e88@gmail.com>"]
 license = "MIT"
 
 [tool.poetry.dependencies]
 python = ">=3.7,<3.11"
-jax = ">=0.3.21"
-jaxlib = ">=0.3.20"
-flax = ">=0.6.1"
-tqdm = ">=4.64.1"
+jax = ">=0.3.0"
+jaxlib = ">=0.3.0"
+flax = ">=0.6.0"
+tqdm = ">=4.0.0"
 pkbar = ">=0.5"
 
 
 [tool.poetry.group.dev.dependencies]
 black = {version = "^22.10.0", allow-prereleases = true}
-tensorflow-cpu = ">=2.10.0"
-tensorflow-datasets = ">=4.7.0"
+tensorflow-cpu = ">=2.0.0"
+tensorflow-datasets = ">=4.0.0"
 
 
 [build-system]
