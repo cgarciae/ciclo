@@ -26,7 +26,8 @@ state, loop = ciclo.loop(
 ```python
 @jax.jit
 def train_step(state: TrainState, batch, _):
-    inputs, labels = batch['image'], batch['label']
+    inputs, labels = batch["image"], batch["label"]
+
     def loss_fn(params):
         logits = state.apply_fn({"params": params}, inputs)
         loss = optax.softmax_cross_entropy_with_integer_labels(
@@ -49,7 +50,7 @@ state, loop = ciclo.loop(
             ciclo.keras_bar(total=total_steps), # progress bar
         ],
         ciclo.every(100): [
-            Profile(logdir=logdir), # periodic_actions
+            Profile(logdir=logdir), # clu.periodic_actions
         ],
     },
     stop=total_steps,
