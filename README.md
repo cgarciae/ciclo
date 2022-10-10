@@ -56,3 +56,6 @@ state, loop = ciclo.loop(
     stop=total_steps,
 )
 ```
+```
+4650/10000 [============>.................] - ETA: 8s - accuracy: 0.9779 - loss: 0.0718  
+```
