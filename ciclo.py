@@ -1,9 +1,19 @@
-
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 import functools
 from re import U
-from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, TypeVar, Union
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    List,
+    Optional,
+    Sequence,
+    Tuple,
+    TypeVar,
+    Union,
+    overload,
+)
 import inspect
 from clu.periodic_actions import PeriodicAction
 from pkbar import Kbar
@@ -257,20 +267,54 @@ class every:
 
 
 class inner_loop:
+    @overload
     def __init__(
         self,
-        name: str,
-        loop_fn: Callable[[State], Tuple[State, Loop]],
+        name_or_loop_fn: str,
+        maybe_loop_fn: Callable[[State], Tuple[State, Loop]],
+        *,
+        reset_fn: Optional[Callable[[State], State]] = None,
     ):
-        self.name = name
-        self.loop_fn = loop_fn
+        ...
+
+    @overload
+    def __init__(
+        self,
+        name_or_loop_fn: Callable[[State], Tuple[State, Loop]],
+        *,
+        reset_fn: Optional[Callable[[State], State]] = None,
+    ):
+        ...
+
+    def __init__(
+        self,
+        name_or_loop_fn: Union[str, Callable[[State], Tuple[State, Loop]]],
+        maybe_loop_fn: Optional[Callable[[State], Tuple[State, Loop]]] = None,
+        *,
+        reset_fn: Optional[Callable[[State], State]] = None,
+    ):
+        if isinstance(name_or_loop_fn, str):
+            assert maybe_loop_fn is not None
+            self.name = name_or_loop_fn
+            self.loop_fn = maybe_loop_fn
+        else:
+            assert maybe_loop_fn is None
+            self.name = None
+            self.loop_fn = name_or_loop_fn
+        self.reset_fn = reset_fn
 
     def __call__(self, state, batch, elapsed: Elapsed, loop):
+        if self.reset_fn is not None:
+            state = self.reset_fn(state)
         state, inner_loop = self.loop_fn(state)
         logs = inner_loop.history[-1]
         logs = {
-            f"{k}_{self.name}": v for k, v in logs.items() if not isinstance(v, Elapsed)
+            k + f"_{self.name}" if self.name else k: v
+            for k, v in logs.items()
+            if not isinstance(v, Elapsed)
         }
+        if self.reset_fn is not None:
+            state = self.reset_fn(state)
         return logs, state
 
 
