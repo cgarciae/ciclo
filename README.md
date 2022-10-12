@@ -26,7 +26,8 @@ state, loop = ciclo.loop(
 ```python
 @jax.jit
 def train_step(state: TrainState, batch, _):
-    inputs, labels = batch['image'], batch['label']
+    inputs, labels = batch["image"], batch["label"]
+
     def loss_fn(params):
         logits = state.apply_fn({"params": params}, inputs)
         loss = optax.softmax_cross_entropy_with_integer_labels(
@@ -36,10 +37,7 @@ def train_step(state: TrainState, batch, _):
 
     (loss, logits), grads = jax.value_and_grad(loss_fn, has_aux=True)(state.params)
     state = state.apply_gradients(grads=grads)
-    logs = {
-        "loss": loss,
-        "accuracy": jnp.mean(jnp.argmax(logits, -1) == labels),
-    }
+    logs = {"loss": loss, "accuracy": jnp.mean(jnp.argmax(logits, -1) == labels)}
     return logs, state
 
 
@@ -52,9 +50,12 @@ state, loop = ciclo.loop(
             ciclo.keras_bar(total=total_steps), # progress bar
         ],
         ciclo.every(100): [
-            Profile(logdir=logdir), # periodic_actions
+            Profile(logdir=logdir), # clu.periodic_actions
         ],
     },
     stop=total_steps,
 )
+```
+```
+4650/10000 [============>.................] - ETA: 8s - accuracy: 0.9779 - loss: 0.0718  
 ```
