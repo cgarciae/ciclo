@@ -108,7 +108,7 @@ eval_loop = ciclo.inner_loop(
         on_start=[reset_metrics],
     ),
 )
-state, loop = ciclo.loop(
+state, loops = ciclo.loop(
     state,
     ds_train.as_numpy_iterator(),
     {

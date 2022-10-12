@@ -143,6 +143,25 @@ optional = false
 python-versions = "*"
 
 [[package]]
+name = "einop"
+version = "0.0.1"
+description = ""
+category = "main"
+optional = false
+python-versions = ">=3.7,<4.0"
+
+[package.dependencies]
+einops = ">=0.4.0"
+
+[[package]]
+name = "einops"
+version = "0.5.0"
+description = "A new flavour of deep learning operations"
+category = "main"
+optional = false
+python-versions = ">=3.7"
+
+[[package]]
 name = "etils"
 version = "0.8.0"
 description = "Collection of common python utils"
@@ -1086,7 +1105,7 @@ testing = ["flake8 (<5)", "func-timeout", "jaraco.functools", "jaraco.itertools"
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.7,<3.11"
-content-hash = "180fe0cb366eb903c303a137d8b0d18368d2d436b17578ab049ebf9c7986e757"
+content-hash = "43d73fc76dae26fa2b23a25961e84376b078058a9e4d3fb3259a40c3d8524ccc"
 
 [metadata.files]
 absl-py = [
@@ -1179,6 +1198,14 @@ dm-tree = [
     {file = "dm_tree-0.1.7-cp39-cp39-macosx_11_0_arm64.whl", hash = "sha256:7fa0740b7fbae2c3a43a3114a514891b5d6c383050828f36aa1816cf40f73a6a"},
     {file = "dm_tree-0.1.7-cp39-cp39-manylinux_2_12_x86_64.manylinux2010_x86_64.whl", hash = "sha256:1379a02df36e2bbff9819ceafa55ccd436b15af398803f781f372f8ead7ed871"},
     {file = "dm_tree-0.1.7-cp39-cp39-win_amd64.whl", hash = "sha256:3ca0a58e219b7b0bc201fea4679971188d0a9028a2543c16803a84e8f8c7eb2c"},
+]
+einop = [
+    {file = "einop-0.0.1-py3-none-any.whl", hash = "sha256:edff8c3916cf4a22eccd31254d752ec7959388bd6877eb5285eed6ca5170e36b"},
+    {file = "einop-0.0.1.tar.gz", hash = "sha256:15add3732a54eb6c49618be0c59b97163e46ae87aeb5e387d9c418402ea33178"},
+]
+einops = [
+    {file = "einops-0.5.0-py3-none-any.whl", hash = "sha256:055de7eeb3cb9e9710ef3085a811090c6b52e809b7044e8785824ed185f486d1"},
+    {file = "einops-0.5.0.tar.gz", hash = "sha256:8b7a83cffc1ea88e306df099b7cbb9c3ba5003bd84d05ae44be5655864abb8d3"},
 ]
 etils = [
     {file = "etils-0.8.0-py3-none-any.whl", hash = "sha256:b6299d2a835206b063498e443bd8036edb974058899169677dd6ddb92430bb84"},

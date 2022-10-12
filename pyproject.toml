@@ -12,6 +12,7 @@ jaxlib = ">=0.3.0"
 flax = ">=0.6.0"
 tqdm = ">=4.0.0"
 pkbar = ">=0.5"
+einop = "^0.0.1"
 
 
 [tool.poetry.group.dev.dependencies]
