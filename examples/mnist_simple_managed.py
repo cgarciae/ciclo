@@ -33,7 +33,7 @@ class CNN(nn.Module):
 
 
 @managed.train_step
-def train_step(state: managed.ManagedState, batch):
+def train_step(state: managed.ManagedState, batch, _):
     inputs, labels = batch["image"], batch["label"]
 
     logits = state.apply_fn({"params": state.params}, inputs)
@@ -42,7 +42,7 @@ def train_step(state: managed.ManagedState, batch):
     ).mean()
 
     managed.log("accuracy", jnp.mean(jnp.argmax(logits, -1) == labels))
-    
+
     return loss, state
 
 
