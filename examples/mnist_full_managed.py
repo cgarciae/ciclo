@@ -35,12 +35,12 @@ class CNN(nn.Module):
         return x
 
 
-LossAverage = Average.from_output("loss")
+AverageLoss = Average.from_output("loss")
 
 
 class ManagedState(managed.ManagedState):
     accuracy: Accuracy
-    loss: LossAverage
+    loss: AverageLoss
 
 
 def loss_fn(state: ManagedState, batch, _):
@@ -52,7 +52,7 @@ def loss_fn(state: ManagedState, batch, _):
     ).mean()
 
     managed.log("accuracy", Accuracy.from_model_output(logits=logits, labels=labels))
-    managed.log("loss", LossAverage.from_model_output(loss=loss))
+    managed.log("loss", AverageLoss.from_model_output(loss=loss))
 
     return loss, state
 
@@ -64,8 +64,8 @@ eval_step = managed.eval_step(loss_fn)
 @managed.step
 def reset_metrics(state: ManagedState, batch, _):
     return None, state.replace(
-        accuracy=state.accuracy.empty(),
-        loss=state.loss.empty(),
+        accuracy=Accuracy.empty(),
+        loss=AverageLoss.empty(),
     )
 
 
@@ -77,7 +77,7 @@ state = ManagedState.create(
     params=variables["params"],
     tx=optax.adamw(1e-3),
     accuracy=Accuracy.empty(),
-    loss=LossAverage.empty(),
+    loss=AverageLoss.empty(),
     strategy="data_parallel",
 )
 
