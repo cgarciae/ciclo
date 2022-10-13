@@ -1,16 +1,16 @@
 import functools
 import inspect
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 from importlib import util as importlib_util
-from re import U
 from typing import (
     Any,
     Callable,
     Dict,
     List,
     Optional,
-    Sequence,
     Tuple,
+    Type,
     TypeVar,
     Union,
     overload,
@@ -21,17 +21,88 @@ from flax.struct import PyTreeNode
 from pkbar import Kbar
 from tqdm import tqdm
 
-from ciclo.managed import Managed
+# ---------------------------------------
+# types
+# ---------------------------------------
+State = Any
+Batch = Any
+Broadcasts = Any
+Statics = Any
+Logs = Dict[str, Any]
+Outputs = Dict[str, Any]
+LogHistory = List[Logs]
+OutputHistory = List[Outputs]
+InputCallable = Any
+S = TypeVar("S", bound=State)
+B = TypeVar("B", bound=Batch)
 
-# find if clu can be imported using importlib
+Schedule = Callable[["Elapsed"], bool]
+Callback = Callable[
+    [S, Batch, "Elapsed", "LoopState"],
+    Union[
+        Tuple[Optional[Outputs], Optional[Logs], Optional[S]],
+        Tuple[Optional[Logs], Optional[S]],
+        None,
+    ],
+]
+GeneralCallback = Callable[
+    [S, Batch, Broadcasts, Statics],
+    Union[
+        Tuple[Optional[Outputs], Optional[Logs], Optional[S]],
+        Tuple[Optional[Logs], Optional[S]],
+        None,
+    ],
+]
+InputTasks = Dict[Schedule, List[InputCallable]]
+ScheduleCallback = Dict[Schedule, List[Callback]]
+CallbackAdapter = Callable[[Any], Callback]
 
-if importlib_util.find_spec("clu") is not None:
-    from clu.periodic_actions import PeriodicAction
-else:
+# ---------------------------------------
+# Registry
+# ---------------------------------------
+_REGISTRY: Dict[Type, CallbackAdapter] = {}
 
-    class PeriodicAction:
-        def __call__(self, step: int, t: Optional[float] = None) -> bool:
-            ...
+
+def register_adapter(adapter: CallbackAdapter, cls: Type):
+    if cls in _REGISTRY:
+        raise ValueError(f"Adapter for {cls} already registered")
+
+    _REGISTRY[cls] = adapter
+
+
+def _get_adapter(cls: Type) -> Optional[CallbackAdapter]:
+    super_classes = inspect.getmro(cls)
+    for super_class in super_classes:
+        if super_class in _REGISTRY:
+            return _REGISTRY[super_class]
+    return None
+
+
+def get_callback(f: Any) -> Callback:
+    adaper = _get_adapter(type(f))
+
+    if adaper is not None:
+        callback = adaper(f)
+    elif callable(f):
+        callback = f
+    else:
+        raise ValueError(f"Invalid callback: {f}")
+
+    @functools.wraps(callable)
+    def callback_wrapper(
+        state: State, batch: Batch, broadcasts: Broadcasts, statics: Statics
+    ):
+        # maybe inject logs and history
+        n_args = len(inspect.getfullargspec(callback).args)
+        args = (state, batch, broadcasts, statics)
+        return callback(*args[:n_args])
+
+    return callback_wrapper
+
+
+# ---------------------------------------
+# elapsed
+# ---------------------------------------
 
 
 class Elapsed(PyTreeNode):
@@ -99,56 +170,6 @@ class Period:
         return False
 
 
-State = Any
-Batch = Any
-Step = int
-Logs = Dict[str, Any]
-LogHistory = List[Logs]
-
-Schedule = Callable[[Elapsed], bool]
-Callback = Callable[
-    [State, Batch, Elapsed, "Loop"],
-    Optional[Tuple[Optional[Logs], Optional[State]]],
-]
-InputCallable = Union[Callable, PeriodicAction, Managed]
-ScheduleCallable = Dict[Schedule, List[InputCallable]]
-ScheduleCallback = Dict[Schedule, List[Callback]]
-
-S = TypeVar("S", bound=State)
-B = TypeVar("B", bound=Batch)
-
-
-def create_callback(f: InputCallable) -> Callback:
-
-    if isinstance(f, Managed):
-
-        @functools.wraps(f)
-        def wrapper(state: State, batch: Batch, elapsed: Elapsed, loop: Loop):
-            return f(state, batch, elapsed, None)
-
-    elif isinstance(f, PeriodicAction):
-
-        @functools.wraps(f)
-        def wrapper(state: State, batch: Batch, elapsed: Elapsed, loop: Loop):
-            f(elapsed.steps, t=elapsed.date)
-
-    else:
-        sig = inspect.signature(f)
-        params = sig.parameters
-
-        @functools.wraps(f)
-        def wrapper(state: State, batch: Batch, elapsed: Elapsed, loop: Loop):
-            # maybe inject logs and history
-            args = [state, batch, elapsed]
-            kwargs = {}
-            if "loop" in params:
-                kwargs["loop"] = loop
-
-            return f(*args, **kwargs)
-
-    return wrapper
-
-
 # ---------------------------------------
 # loops
 # ---------------------------------------
@@ -163,120 +184,105 @@ def get_batch_size(batch: Batch) -> int:
     return sizes.pop()
 
 
-class Loop:
-    def __init__(
-        self,
-        initial_steps: int = 0,
-        initial_samples: int = 0,
-        history: Optional[LogHistory] = None,
-    ):
-        self.state: Optional[State] = None
-        self.initial_steps: int = initial_steps
-        self.initial_samples: int = initial_samples
-        self.step_logs: Optional[Logs] = None
-        self.accumulated_logs: Optional[Logs] = None
-        self.history: LogHistory = history or []
-        self.elapsed: Optional[Elapsed] = None
-
-    def run(
-        self,
-        state: S,
-        dataset,
-        schedule_callbacks: ScheduleCallable,
-        *,
-        stop: Union[Period, int, None] = None,
-        on_start: Optional[List[InputCallable]] = None,
-        on_end: Optional[List[InputCallable]] = None,
-    ) -> S:
-
-        self.elapsed = Elapsed.create(
-            steps=self.initial_steps, samples=self.initial_samples
-        )
-        schedule_callbacks_: ScheduleCallback = {
-            schedule: [create_callback(f) for f in callbacks]
-            for schedule, callbacks in schedule_callbacks.items()
-        }
-
-        if isinstance(stop, int):
-            stop = Period(steps=stop)
-        try:
-            self.state = state
-            batch = None
-            self.accumulated_logs = {}
-
-            for i, batch in enumerate(dataset):
-                batch_size = get_batch_size(batch)
-                self.elapsed = self.elapsed.update_samples(batch_size)
-
-                # call on_start on first batch
-                if i == 0 and on_start is not None:
-                    self.step_logs = {}
-                    for callback in on_start:
-                        callback = create_callback(callback)
-                        self._make_call(callback, batch)
-
-                self.step_logs = {}
-                for schedule, callbacks in schedule_callbacks_.items():
-                    if schedule(self.elapsed):
-                        for callback in callbacks:
-                            self._make_call(callback, batch)
-
-                self.elapsed = self.elapsed.update_steps()
-                if self.step_logs:
-                    self.step_logs["elapsed"] = self.elapsed
-                    self.history.append(self.step_logs)
-
-                if stop is not None and stop >= self.elapsed:
-                    break
-
-            # call on_end on last batch
-            if on_end is not None:
-                self.step_logs = {}
-                for callback in on_end:
-                    callback = create_callback(callback)
-                    self._make_call(callback, batch)
-
-            return self.state
-        finally:
-            self.state = None
-            self.step_logs = None
-            self.elapsed = None
-
-    def _make_call(self, callback: Callback, batch: Batch):
-        assert self.step_logs is not None
-        assert self.accumulated_logs is not None
-        assert self.elapsed is not None
-
-        self.elapsed = self.elapsed.update_time()
-        output = callback(self.state, batch, self.elapsed, self)
-        if output is not None:
-            out_logs, out_state = output
-            if out_state is not None:
-                self.state = out_state
-            if out_logs is not None:
-                self.step_logs.update(out_logs)
-                self.accumulated_logs.update(out_logs)
+@dataclass
+class LoopState:
+    log_history: LogHistory
+    output_history: OutputHistory
+    elapsed: Elapsed
+    state: Optional[State] = None
+    step_logs: Optional[Logs] = None
+    accumulated_logs: Optional[Logs] = None
 
 
 def loop(
     state: S,
     dataset,
-    schedule_callbacks: ScheduleCallable,
+    tasks: InputTasks,
     *,
     stop: Union[Period, int, None] = None,
-    initial_steps: int = 0,
-    initial_samples: int = 0,
-    history: Optional[LogHistory] = None,
     on_start: Optional[List[InputCallable]] = None,
     on_end: Optional[List[InputCallable]] = None,
-) -> Tuple[S, Loop]:
-    loop = Loop(
-        initial_steps=initial_steps, initial_samples=initial_samples, history=history
-    )
-    state = loop.run(
-        state, dataset, schedule_callbacks, stop=stop, on_start=on_start, on_end=on_end
-    )
-    return state, loop
+    loop_state: Optional[LoopState] = None,
+) -> Tuple[LoopState, S]:
+
+    if loop_state is None:
+        loop_state = LoopState(
+            log_history=[],
+            output_history=[],
+            elapsed=Elapsed.create(),
+        )
+
+    tasks_ = {
+        schedule: [get_callback(f) for f in callbacks]
+        for schedule, callbacks in tasks.items()
+    }
+
+    if isinstance(stop, int):
+        stop = Period(steps=stop)
+    try:
+        loop_state.state = state
+        batch = None
+        loop_state.accumulated_logs = {}
+
+        for i, batch in enumerate(dataset):
+            batch_size = get_batch_size(batch)
+            loop_state.elapsed = loop_state.elapsed.update_samples(batch_size)
+
+            # call on_start on first batch
+            if i == 0 and on_start is not None:
+                loop_state.step_logs = {}
+                for callback in on_start:
+                    callback = get_callback(callback)
+                    _make_call(loop_state, callback, batch)
+
+            loop_state.step_logs = {}
+            for schedule, callbacks in tasks_.items():
+                if schedule(loop_state.elapsed):
+                    for callback in callbacks:
+                        _make_call(loop_state, callback, batch)
+
+            loop_state.elapsed = loop_state.elapsed.update_steps()
+            if loop_state.step_logs:
+                loop_state.step_logs["elapsed"] = loop_state.elapsed
+                loop_state.log_history.append(loop_state.step_logs)
+
+            if stop is not None and stop >= loop_state.elapsed:
+                break
+
+        # call on_end on last batch
+        if on_end is not None:
+            loop_state.step_logs = {}
+            for callback in on_end:
+                callback = get_callback(callback)
+                _make_call(loop_state, callback, batch)
+
+        return loop_state, loop_state.state
+    finally:
+        loop_state.state = None
+        loop_state.step_logs = None
+        loop_state.accumulated_logs = None
+
+
+def _make_call(loop_state: LoopState, callback: Callback, batch: Batch):
+    assert loop_state.step_logs is not None
+    assert loop_state.accumulated_logs is not None
+    assert loop_state.elapsed is not None
+
+    loop_state.elapsed = loop_state.elapsed.update_time()
+    callback_outputs = callback(loop_state.state, batch, loop_state.elapsed, loop_state)
+    if callback_outputs is not None:
+        if len(callback_outputs) == 3:
+            outputs, logs, state = callback_outputs
+        else:
+            logs, state = callback_outputs
+            outputs = None
+        if outputs is not None:
+            loop_state.output_history.append(outputs)
+        if logs is not None:
+            loop_state.step_logs.update(logs)
+            loop_state.accumulated_logs.update(logs)
+        if state is not None:
+            loop_state.state = state
 
 
 # ---------------------------------------
@@ -323,7 +329,7 @@ class inner_loop:
     def __init__(
         self,
         name_or_loop_fn: str,
-        maybe_loop_fn: Callable[[State], Tuple[State, Loop]],
+        maybe_loop_fn: Callable[[State], Tuple[LoopState, State]],
         *,
         output_state: bool = False,
     ):
@@ -332,7 +338,7 @@ class inner_loop:
     @overload
     def __init__(
         self,
-        name_or_loop_fn: Callable[[State], Tuple[State, Loop]],
+        name_or_loop_fn: Callable[[State], Tuple[LoopState, State]],
         *,
         output_state: bool = False,
     ):
@@ -340,8 +346,8 @@ class inner_loop:
 
     def __init__(
         self,
-        name_or_loop_fn: Union[str, Callable[[State], Tuple[State, Loop]]],
-        maybe_loop_fn: Optional[Callable[[State], Tuple[State, Loop]]] = None,
+        name_or_loop_fn: Union[str, Callable[[State], Tuple[LoopState, State]]],
+        maybe_loop_fn: Optional[Callable[[State], Tuple[LoopState, State]]] = None,
         *,
         output_state: bool = False,
     ):
@@ -355,9 +361,9 @@ class inner_loop:
             self.loop_fn = name_or_loop_fn
         self.output_state = output_state
 
-    def __call__(self, state, batch, elapsed: Elapsed, loop):
-        state, inner_loop = self.loop_fn(state)
-        logs = inner_loop.history[-1]
+    def __call__(self, state, batch, elapsed, outer_loop_state):
+        loop_state, state = self.loop_fn(state)
+        logs = loop_state.log_history[-1] if len(loop_state.log_history) > 0 else {}
         logs = {
             k + f"_{self.name}" if self.name else k: v
             for k, v in logs.items()
@@ -532,7 +538,7 @@ class keras_bar:
             unit_name=unit_name,
         )
 
-    def __call__(self, state, batch, elapsed: Elapsed, loop: Loop):
+    def __call__(self, state, batch, elapsed: Elapsed, loop_state: LoopState):
         if self.total is None or self.total.steps is not None:
             update = elapsed.steps
         elif self.total.samples is not None:
@@ -545,7 +551,9 @@ class keras_bar:
         self.bar.update(
             update,
             values=[
-                (k, v) for k, v in loop.step_logs.items() if not isinstance(v, Elapsed)
+                (k, v)
+                for k, v in loop_state.step_logs.items()
+                if not isinstance(v, Elapsed)
             ],
         )
 
@@ -562,3 +570,21 @@ def at(
     date: Optional[float] = None,
 ) -> Period:
     return Period(steps=steps, samples=samples, time=time, date=date)
+
+
+# -------------------------------------------
+# Adapters
+# -------------------------------------------
+
+if importlib_util.find_spec("clu") is not None:
+    from clu.periodic_actions import PeriodicAction
+
+    @functools.partial(register_adapter, cls=PeriodicAction)
+    def periodic_action_adapter(f: PeriodicAction):
+        @functools.wraps(f)
+        def callback(
+            state: State, batch: Batch, elapsed: Elapsed, loop_state: LoopState
+        ):
+            f(elapsed.steps, t=elapsed.date)
+
+        return callback

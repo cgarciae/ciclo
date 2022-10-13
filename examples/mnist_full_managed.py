@@ -78,18 +78,18 @@ state = ManagedState.create(
     tx=optax.adamw(1e-3),
     accuracy=Accuracy.empty(),
     loss=AverageLoss.empty(),
-    strategy="data_parallel",
+    strategy="jit",
 )
 
 # training loop
 total_samples = 32 * 10 * 10_000
 eval_samples = 32 * 1 * 10_000
 
-state, loop = ciclo.loop(
+loop_state, state = ciclo.loop(
     state,
     ds_train.as_numpy_iterator(),
     {
-        ciclo.every(1): [train_step],
+        ciclo.every(steps=1): [train_step],
         ciclo.every(samples=eval_samples): [
             reset_metrics,
             ciclo.inner_loop(
@@ -97,12 +97,12 @@ state, loop = ciclo.loop(
                 lambda state: ciclo.loop(
                     state,
                     ds_valid.as_numpy_iterator(),
-                    {ciclo.every(1): [eval_step]},
+                    {ciclo.every(steps=1): [eval_step]},
                 ),
             ),
             reset_metrics,
         ],
-        ciclo.every(1): [
+        ciclo.every(steps=1): [
             ciclo.keras_bar(total=ciclo.at(samples=total_samples), always_stateful=True)
         ],
     },

@@ -60,7 +60,7 @@ state = TrainState.create(
 # training loop
 total_steps = 10_000
 
-state, loop = ciclo.loop(
+loop_state, state = ciclo.loop(
     state,
     ds_train.as_numpy_iterator(),
     {

@@ -20,6 +20,7 @@ from einop import einop
 from flax import jax_utils
 from flax.training import train_state
 from typing_extensions import Protocol, runtime_checkable
+from ciclo.loops import GeneralCallback, Logs
 
 if importlib_util.find_spec("clu"):
     from clu.metrics import Metric
@@ -41,16 +42,6 @@ A = TypeVar("A")
 S = TypeVar("S", bound=Dataclass)
 ME = TypeVar("ME", bound=Metric)
 
-State = Any
-Batch = Any
-Broadcasts = Any
-Statics = Any
-Logs = Dict[str, Any]
-
-
-Callback = Callable[
-    [S, Batch, Broadcasts, Statics], Optional[Tuple[Optional[Logs], Optional[S]]]
-]
 
 _REGISTRY: Dict[str, StrategyConstructor] = {}
 
@@ -189,13 +180,13 @@ class Strategy(ABC):
         return logs
 
     @abstractmethod
-    def __call__(self, callback: Callback) -> Callback:
+    def __call__(self, callback: GeneralCallback) -> GeneralCallback:
         ...
 
 
 @dataclass(eq=True, frozen=True)
 class Eager(Strategy):
-    def __call__(self, callback: Callback) -> Callback:
+    def __call__(self, callback: GeneralCallback) -> GeneralCallback:
         return callback
 
 
@@ -203,7 +194,7 @@ class Eager(Strategy):
 class JIT(Strategy):
     donate_args: bool = False
 
-    def __call__(self, callback: Callback) -> Callback:
+    def __call__(self, callback: GeneralCallback) -> GeneralCallback:
         return jax.jit(
             callback,
             donate_argnums=0 if self.donate_args else (),
@@ -269,7 +260,7 @@ class DataParallel(Strategy):
     def handle_logs(self, logs: Logs) -> Logs:
         return jax.lax.pmean(logs, axis_name=self.axis_name)
 
-    def __call__(self, callback: Callback) -> Callback:
+    def __call__(self, callback: GeneralCallback) -> GeneralCallback:
         return jax.pmap(
             callback,
             axis_name=self.axis_name,

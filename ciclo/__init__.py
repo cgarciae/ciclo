@@ -4,7 +4,6 @@ __version__ = "0.1.0"
 from . import managed
 from .loops import (
     Elapsed,
-    Loop,
     Period,
     at,
     every,

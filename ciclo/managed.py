@@ -1,3 +1,5 @@
+from functools import partial
+import functools
 import importlib.util as importlib_util
 import inspect
 import threading
@@ -11,8 +13,17 @@ from flax import struct
 from flax.core import tracers
 from flax.training import train_state
 from typing_extensions import Protocol, runtime_checkable
+from ciclo.loops import (
+    Broadcasts,
+    Elapsed,
+    Logs,
+    State,
+    Statics,
+    register_adapter,
+    Batch,
+)
 
-from ciclo.strategies import Callback, Strategy, get_strategy
+from ciclo.strategies import GeneralCallback, Strategy, get_strategy
 
 if importlib_util.find_spec("clu"):
     from clu.metrics import Metric
@@ -31,11 +42,7 @@ class HasBatchStats(Protocol):
 
 
 Loss = jax.Array
-State = Any
-Batch = Any
-Broadcasts = Any
-Statics = Any
-Logs = Dict[str, Any]
+
 S = TypeVar("S", bound="ManagedState")
 L = TypeVar("L", bound="LossFn")
 A = TypeVar("A")
@@ -178,7 +185,7 @@ class Managed(Generic[S]):
 
 @dataclass
 class ManagedStepBase(Managed[S]):
-    strategy_callbacks: Dict[Strategy, Callback[S]]
+    strategy_callbacks: Dict[Strategy, GeneralCallback[S]]
     default_strategy: Strategy
 
     def __call__(
@@ -201,15 +208,15 @@ class ManagedStepBase(Managed[S]):
         return logs, state
 
     @abstractmethod
-    def get_callback(self, strategy: Strategy) -> Callback:
+    def get_callback(self, strategy: Strategy) -> GeneralCallback:
         ...
 
 
 @dataclass
 class ManagedStep(ManagedStepBase[S]):
-    step_fn: Callback[S]
+    step_fn: GeneralCallback[S]
 
-    def get_callback(self, strategy: Strategy) -> Callback[S]:
+    def get_callback(self, strategy: Strategy) -> GeneralCallback[S]:
         return self.step_fn
 
 
@@ -236,7 +243,7 @@ class ManagedEvalStep(ManagedStepBase[S]):
         logs, state = callback(state, batch, broadcasts, statics)
         return logs, state
 
-    def get_callback(self, strategy: Strategy) -> Callback:
+    def get_callback(self, strategy: Strategy) -> GeneralCallback:
         def callback(
             state: S, batch: Batch, broadcasts: Broadcasts, statics: Statics
         ) -> Tuple[Logs, S]:
@@ -261,7 +268,7 @@ class ManagedEvalStep(ManagedStepBase[S]):
 class ManagedTrainStep(ManagedStepBase[S]):
     loss_fn: LossFn[S]
 
-    def get_callback(self, strategy: Strategy) -> Callback:
+    def get_callback(self, strategy: Strategy) -> GeneralCallback:
         def callback(
             state: S, batch: Batch, broadcasts: Broadcasts, statics: Statics
         ) -> Tuple[Logs, S]:
@@ -358,3 +365,12 @@ def step(
         strategy_callbacks={},
         default_strategy=strategy,
     )
+
+
+@partial(register_adapter, cls=Managed)
+def managed_adapter(f: Managed):
+    @functools.wraps(f)
+    def callback(state: State, batch: Batch, elapsed: Elapsed, loop: Any):
+        return f(state, batch, elapsed, None)
+
+    return callback

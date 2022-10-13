@@ -99,22 +99,23 @@ state = TrainState.create(
 total_steps = 10_000
 eval_steps = 1_000
 log_steps = 200
-eval_loop = ciclo.inner_loop(
-    "valid",
-    lambda state: ciclo.loop(
-        state,
-        ds_valid.as_numpy_iterator(),
-        {ciclo.every(1): [eval_step]},
-        on_start=[reset_metrics],
-    ),
-)
-state, loops = ciclo.loop(
+loop_state, state = ciclo.loop(
     state,
     ds_train.as_numpy_iterator(),
     {
         ciclo.every(1): [train_step],
         ciclo.every(log_steps): [compute_metrics, reset_metrics],
-        ciclo.every(eval_steps): [eval_loop],
+        ciclo.every(eval_steps): [
+            ciclo.inner_loop(
+                "valid",
+                lambda state: ciclo.loop(
+                    state,
+                    ds_valid.as_numpy_iterator(),
+                    {ciclo.every(1): [eval_step]},
+                    on_start=[reset_metrics],
+                ),
+            )
+        ],
         ciclo.every(1): [ciclo.keras_bar(total=total_steps, always_stateful=True)],
     },
     stop=total_steps,
