@@ -13,7 +13,7 @@ from flax import struct
 from flax.core import tracers
 from flax.training import train_state
 from typing_extensions import Protocol, runtime_checkable
-from ciclo.loops import (
+from ciclo.api import (
     Broadcasts,
     Elapsed,
     Logs,

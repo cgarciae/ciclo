@@ -59,7 +59,7 @@ state = managed.ManagedState.create(
 # training loop
 total_samples = 32 * 10 * 10_000
 
-loop_state, state = ciclo.loop(
+state, history, *_ = ciclo.loop(
     state,
     ds_train.as_numpy_iterator(),
     {

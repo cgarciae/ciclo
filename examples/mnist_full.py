@@ -99,7 +99,7 @@ state = TrainState.create(
 total_steps = 10_000
 eval_steps = 1_000
 log_steps = 200
-loop_state, state = ciclo.loop(
+state, log_history, *_ = ciclo.loop(
     state,
     ds_train.as_numpy_iterator(),
     {
@@ -114,7 +114,10 @@ loop_state, state = ciclo.loop(
                     {ciclo.every(1): [eval_step]},
                     on_start=[reset_metrics],
                 ),
-            )
+            ),
+            ciclo.checkpoint(
+                "logdir/mnist_full", only_best_for="accuracy_valid", minimize=False
+            ),
         ],
         ciclo.every(1): [ciclo.keras_bar(total=total_steps, always_stateful=True)],
     },

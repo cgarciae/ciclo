@@ -2,16 +2,10 @@ __version__ = "0.1.0"
 
 
 from . import managed
-from .loops import (
-    Elapsed,
-    Period,
-    at,
-    every,
-    inner_loop,
-    keras_bar,
-    loop,
-    tqdm_bar,
-)
+from .api import Elapsed, Period, at
+from .callbacks import inner_loop, keras_bar, tqdm_bar, checkpoint
+from .loops import loop
+from .schedules import every
 from .strategies import (
     JIT,
     DataParallel,

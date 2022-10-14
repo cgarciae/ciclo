@@ -85,7 +85,7 @@ state = ManagedState.create(
 total_samples = 32 * 10 * 10_000
 eval_samples = 32 * 1 * 10_000
 
-loop_state, state = ciclo.loop(
+state, history, *_ = ciclo.loop(
     state,
     ds_train.as_numpy_iterator(),
     {
@@ -99,6 +99,11 @@ loop_state, state = ciclo.loop(
                     ds_valid.as_numpy_iterator(),
                     {ciclo.every(steps=1): [eval_step]},
                 ),
+            ),
+            ciclo.checkpoint(
+                "logdir/mnist_full_managed",
+                only_best_for="accuracy_valid",
+                minimize=False,
             ),
             reset_metrics,
         ],

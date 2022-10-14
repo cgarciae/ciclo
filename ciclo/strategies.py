@@ -20,7 +20,7 @@ from einop import einop
 from flax import jax_utils
 from flax.training import train_state
 from typing_extensions import Protocol, runtime_checkable
-from ciclo.loops import GeneralCallback, Logs
+from ciclo.api import GeneralCallback, Logs
 
 if importlib_util.find_spec("clu"):
     from clu.metrics import Metric

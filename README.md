@@ -23,7 +23,7 @@ _, history, state = loop(
 ```python
 def callback(
     state, batch, [broadcasts, statics]
-) -> (outputs, logs, state) | (logs, state) | None:
+) -> (logs, state) | None:
 ```
 <details><summary>Description</summary>
 
@@ -36,12 +36,11 @@ Where:
 `broadcasts` and `statics` are passed as positional arguments.
 
 Callbacks can return:
-* `outputs` (optional) is a dict containing the outputs of the computation
 * `logs` (optional) is a dict containing the log information
 * `state` (optional) is a pytree containing the updated training state
 
 
-Returns can be either a 3-tuple of `(outputs, logs, state)`, a 2-tuple of `(logs, state)`, or `None`. Additionally, any of the outputs (`state`, `logs`, or `state`) can be `None` if they are not needed.
+Returns can be either a 2-tuple of `(logs, state)` or `None`, additionally `logs` or `state` can be `None` if they are not needed.
 
 </details><br>
 
@@ -52,7 +51,7 @@ Returns can be either a 3-tuple of `(outputs, logs, state)`, a 2-tuple of `(logs
 
 def callback(
     state, batch, [elapsed, loop]
-) -> (outputs, logs, state) | (logs, state) | None:
+) -> (logs, state) | None:
 ```
 <details><summary>Description</summary>
 
@@ -78,14 +77,14 @@ def schedule(elapsed: Elapsed) -> bool:
 ```python
 def loop(
     state, dataset: [batch], tasks: {schedule: [callback]}
-) -> (loop_state, state):
+) -> (state, [logs], elapsed):
 ```
 
 <details><summary>Description</summary>
 
 Loops are comprised of a `state` that is threaded through the loop, a `dataset` that is iterated over, and a dictionary of `schedules` to `callbacks` that execute various tasks such as training, logging, evaluation, etc.
 
-Loops return the final `state` and a `loop_state` that contains information such the `log` history, `output` history, and the `elapsed` time.
+Loops return the final `state`, a list of `logs` from each step, and an `elapsed` instance.
 
 </details><br>
 

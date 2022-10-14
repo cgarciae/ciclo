@@ -60,13 +60,16 @@ state = TrainState.create(
 # training loop
 total_steps = 10_000
 
-loop_state, state = ciclo.loop(
+state, history, *_ = ciclo.loop(
     state,
     ds_train.as_numpy_iterator(),
     {
         ciclo.every(1): [
             train_step,
             ciclo.keras_bar(total=total_steps),
+        ],
+        ciclo.every(1000): [
+            ciclo.checkpoint("checkpoints/mnist_simple"),
         ],
     },
     stop=total_steps,
