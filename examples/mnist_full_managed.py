@@ -102,13 +102,20 @@ state, history, *_ = ciclo.loop(
             ),
             ciclo.checkpoint(
                 "logdir/mnist_full_managed",
-                only_best_for="accuracy_valid",
-                minimize=False,
+                monitor="accuracy_valid",
+                mode="max",
             ),
             reset_metrics,
         ],
         ciclo.every(steps=1): [
-            ciclo.keras_bar(total=ciclo.at(samples=total_samples), always_stateful=True)
+            ciclo.early_stopping(
+                monitor="accuracy_valid",
+                mode="max",
+                patience=500,
+            ),
+            ciclo.keras_bar(
+                total=ciclo.at(samples=total_samples), always_stateful=True
+            ),
         ],
     },
     stop=ciclo.at(samples=total_samples),

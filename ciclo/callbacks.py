@@ -5,6 +5,7 @@
 
 from dataclasses import dataclass
 from datetime import datetime
+from enum import Enum, auto
 import os
 from typing import Callable, Optional, Union, overload
 from tqdm import tqdm
@@ -21,6 +22,11 @@ from ciclo.api import (
     get_batch_size,
     is_scalar,
 )
+
+
+class OptimizationMode(Enum):
+    min = auto()
+    max = auto()
 
 
 class inner_loop:
@@ -72,30 +78,46 @@ class inner_loop:
         return logs, state if self.output_state else None
 
 
-@dataclass
 class checkpoint:
-    ckpt_dir: Union[str, os.PathLike]
-    prefix: str = "checkpoint_"
-    keep: int = 1
-    overwrite: bool = False
-    keep_every_n_steps: Optional[int] = None
-    async_manager: Optional[flax_checkpoints.AsyncManager] = None
-    only_best_for: Optional[str] = None
-    minimize: bool = True
-    _best: Optional[float] = None
+    def __init__(
+        self,
+        ckpt_dir: Union[str, os.PathLike],
+        prefix: str = "checkpoint_",
+        keep: int = 1,
+        overwrite: bool = False,
+        keep_every_n_steps: Optional[int] = None,
+        async_manager: Optional[flax_checkpoints.AsyncManager] = None,
+        monitor: Optional[str] = None,
+        mode: Union[str, OptimizationMode] = "min",
+    ):
+        if mode not in OptimizationMode:
+            raise ValueError(
+                f"Invalid mode: {mode}, expected one of {list(OptimizationMode)}"
+            )
+        else:
+            self.mode = OptimizationMode(mode)
+
+        self.ckpt_dir = ckpt_dir
+        self.prefix = prefix
+        self.keep = keep
+        self.overwrite = overwrite
+        self.keep_every_n_steps = keep_every_n_steps
+        self.async_manager = async_manager
+        self.monitor = monitor
+        self.minimize = self.mode == OptimizationMode.min
+        self._best: Optional[float] = None
 
     def __call__(self, state, batch: Batch, elapsed: Elapsed, loop_state: LoopState):
         save_checkpoint = True
         step_or_metric = elapsed.steps
         overwrite = self.overwrite
-        if self.only_best_for is not None:
-            overwrite = True
-            if self.only_best_for not in loop_state.accumulated_logs:
-                raise ValueError(
-                    f"Monitored value '{self.only_best_for}' not found in logs"
-                )
 
-            value = loop_state.accumulated_logs[self.only_best_for]
+        if self.monitor is not None:
+            overwrite = True
+            if self.monitor not in loop_state.accumulated_logs:
+                raise ValueError(f"Monitored value '{self.monitor}' not found in logs")
+
+            value = loop_state.accumulated_logs[self.monitor]
             if (
                 self._best is None
                 or (self.minimize and value < self._best)
@@ -117,6 +139,59 @@ class checkpoint:
                 keep_every_n_steps=self.keep_every_n_steps,
                 async_manager=self.async_manager,
             )
+
+
+class early_stopping:
+    def __init__(
+        self,
+        monitor: str,
+        patience: Union[int, Period],
+        min_delta: float = 0,
+        mode: Union[str, OptimizationMode] = "min",
+        baseline: Optional[float] = None,
+        restore_best_weights: bool = False,
+    ):
+        if mode not in OptimizationMode:
+            raise ValueError(
+                f"Invalid mode: {mode}, expected one of {list(OptimizationMode)}"
+            )
+        else:
+            self.mode = OptimizationMode(mode)
+
+        self.monitor = monitor
+        self.patience = patience if isinstance(patience, Period) else Period(patience)
+        self.min_delta = min_delta
+        self.mode = mode
+        self.baseline = baseline
+        self.restore_best_weights = restore_best_weights
+        self.minimize = self.mode == OptimizationMode.min
+        self._best = baseline
+        self._best_state = None
+        self._elapsed_start: Optional[Elapsed] = None
+
+    def __call__(self, state, batch: Batch, elapsed: Elapsed, loop_state: LoopState):
+        if self.monitor not in loop_state.accumulated_logs:
+            raise ValueError(f"Monitored value '{self.monitor}' not found in logs")
+
+        if self._elapsed_start is None:
+            self._elapsed_start = Elapsed.create()
+
+        value = loop_state.accumulated_logs[self.monitor]
+        if (
+            self._best is None
+            or (self.minimize and value < self._best)
+            or (not self.minimize and value > self._best)
+        ):
+            self._best = value
+            self._best_state = state
+            self._elapsed_start = elapsed
+
+        if self.patience >= elapsed - self._elapsed_start:
+            if self.restore_best_weights and self._best_state is not None:
+                state = self._best_state
+            loop_state.stop_iteration = True
+
+        return None, state
 
 
 class tqdm_bar:

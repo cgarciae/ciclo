@@ -76,6 +76,14 @@ class Elapsed(PyTreeNode):
     def update_time(self) -> "Elapsed":
         return self.replace(date=datetime.now().timestamp())
 
+    def __sub__(self, other: "Elapsed") -> "Elapsed":
+        return Elapsed(
+            steps=self.steps - other.steps,
+            samples=self.samples - other.samples,
+            date=self.date,
+            _date_start=other._date_start,
+        )
+
 
 class Period:
     def __init__(
@@ -123,6 +131,7 @@ class LoopState(Generic[S]):
     elapsed: Elapsed
     step_logs: Logs
     accumulated_logs: Logs
+    stop_iteration: bool = False
 
 
 LoopOutput = Tuple[S, History, Elapsed]
@@ -203,15 +212,6 @@ def is_scalar(x):
         return x.shape == () or x.shape == (1,)
     else:
         return False
-
-
-# ---------------------------------------
-# errors
-# ---------------------------------------
-
-
-class StopLoop(Exception):
-    pass
 
 
 # -------------------------------------------

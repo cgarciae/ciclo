@@ -12,7 +12,6 @@ from ciclo.api import (
     LoopOutput,
     LoopState,
     Period,
-    StopLoop,
     get_batch_size,
     get_callback,
 )
@@ -56,32 +55,34 @@ def loop(
     batch = None
 
     try:
-        try:
-            for i, batch in enumerate(dataset):
-                logs_elapsed = loop_state.elapsed.update(get_batch_size(batch))
-                loop_state.elapsed = logs_elapsed
+        for i, batch in enumerate(dataset):
+            logs_elapsed = loop_state.elapsed.update(get_batch_size(batch))
+            loop_state.elapsed = logs_elapsed
 
-                # call on_start on first batch
-                if i == 0 and on_start is not None:
-                    for callback in on_start:
-                        callback = get_callback(callback)
+            # call on_start on first batch
+            if i == 0 and on_start is not None:
+                for callback in on_start:
+                    callback = get_callback(callback)
+                    _make_call(loop_state, callback, batch)
+
+            loop_state.step_logs = {}
+            for schedule, callbacks in tasks_.items():
+                if schedule(loop_state.elapsed):
+                    for callback in callbacks:
                         _make_call(loop_state, callback, batch)
-
-                loop_state.step_logs = {}
-                for schedule, callbacks in tasks_.items():
-                    if schedule(loop_state.elapsed):
-                        for callback in callbacks:
-                            _make_call(loop_state, callback, batch)
-
-                if loop_state.step_logs:
-                    loop_state.step_logs["elapsed"] = logs_elapsed
-                    loop_state.history.append(loop_state.step_logs)
-
-                if stop is not None and stop >= loop_state.elapsed:
+                        if loop_state.stop_iteration:
+                            break
+                if loop_state.stop_iteration:
                     break
 
-        except StopLoop:
-            pass
+            if loop_state.step_logs:
+                loop_state.step_logs["elapsed"] = logs_elapsed
+                loop_state.history.append(loop_state.step_logs)
+
+            if loop_state.stop_iteration or (
+                stop is not None and stop >= loop_state.elapsed
+            ):
+                break
 
         # call on_end on last batch
         if on_end is not None:

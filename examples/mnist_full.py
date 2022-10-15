@@ -116,7 +116,7 @@ state, log_history, *_ = ciclo.loop(
                 ),
             ),
             ciclo.checkpoint(
-                "logdir/mnist_full", only_best_for="accuracy_valid", minimize=False
+                "logdir/mnist_full", monitor="accuracy_valid", minimize=False
             ),
         ],
         ciclo.every(1): [ciclo.keras_bar(total=total_steps, always_stateful=True)],
