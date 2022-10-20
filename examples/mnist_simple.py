@@ -32,7 +32,7 @@ class CNN(nn.Module):
 
 
 @jax.jit
-def train_step(state: TrainState, batch, _):
+def train_step(state: TrainState, batch):
     inputs, labels = batch["image"], batch["label"]
 
     def loss_fn(params):
