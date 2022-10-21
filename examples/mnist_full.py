@@ -1,3 +1,4 @@
+from time import time
 import flax.linen as nn
 import jax
 import jax.numpy as jnp
@@ -51,7 +52,7 @@ class TrainState(train_state.TrainState):
 
 
 @jax.jit
-def train_step(state: TrainState, batch, _):
+def train_step(state: TrainState, batch):
     def loss_fn(params):
         logits = state.apply_fn({"params": params}, batch["image"])
         loss = optax.softmax_cross_entropy_with_integer_labels(
@@ -99,11 +100,11 @@ state = TrainState.create(
 total_steps = 10_000
 eval_steps = 1_000
 log_steps = 200
-state, log_history, *_ = ciclo.loop(
+state, log_history, _ = ciclo.loop(
     state,
     ds_train.as_numpy_iterator(),
     {
-        ciclo.every(1): [train_step],
+        ciclo.every(1): train_step,
         ciclo.every(log_steps): [compute_metrics, reset_metrics],
         ciclo.every(eval_steps): [
             ciclo.inner_loop(
@@ -111,13 +112,15 @@ state, log_history, *_ = ciclo.loop(
                 lambda state: ciclo.loop(
                     state,
                     ds_valid.as_numpy_iterator(),
-                    {ciclo.every(1): [eval_step]},
+                    {ciclo.every(1): eval_step},
                     on_start=[reset_metrics],
                 ),
             ),
-            ciclo.checkpoint("logdir/mnist_full", monitor="accuracy_valid", mode="max"),
+            ciclo.checkpoint(
+                f"logdir/mnist_full/{int(time())}", monitor="accuracy_valid", mode="max"
+            ),
         ],
-        ciclo.every(1): [ciclo.keras_bar(total=total_steps, always_stateful=True)],
+        **ciclo.keras_bar(total=total_steps, always_stateful=True),
     },
     stop=total_steps,
 )

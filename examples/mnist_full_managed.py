@@ -1,3 +1,4 @@
+from time import time
 import ciclo
 import flax.linen as nn
 import jax
@@ -8,10 +9,11 @@ import tensorflow_datasets as tfds
 from ciclo import managed
 from clu.metrics import Accuracy, Average
 
+batch_size = 32 * 8
 
 # load the MNIST dataset
 ds_train: tf.data.Dataset = tfds.load("mnist", split="train", shuffle_files=True)
-ds_train = ds_train.shuffle(1024).batch(32 * 8).repeat().prefetch(1)
+ds_train = ds_train.shuffle(1024).batch(batch_size).repeat().prefetch(1)
 ds_valid: tf.data.Dataset = tfds.load("mnist", split="test")
 ds_valid = ds_valid.batch(32, drop_remainder=True).prefetch(1)
 
@@ -83,40 +85,40 @@ state = ManagedState.create(
 
 # training loop
 total_samples = 32 * 10 * 10_000
-eval_samples = 32 * 1 * 10_000
+total_steps = total_samples // batch_size
+eval_steps = total_steps // 10
 
 state, history, *_ = ciclo.loop(
     state,
     ds_train.as_numpy_iterator(),
     {
-        ciclo.every(steps=1): [train_step],
-        ciclo.every(samples=eval_samples): [
+        ciclo.every(steps=1): train_step,
+        ciclo.every(eval_steps, steps_offset=1): [
             reset_metrics,
             ciclo.inner_loop(
                 "valid",
                 lambda state: ciclo.loop(
                     state,
                     ds_valid.as_numpy_iterator(),
-                    {ciclo.every(steps=1): [eval_step]},
+                    {ciclo.every(steps=1): eval_step},
                 ),
             ),
             ciclo.checkpoint(
-                "logdir/mnist_full_managed",
+                f"logdir/mnist_full_managed/{int(time())}",
                 monitor="accuracy_valid",
                 mode="max",
+                keep=3,
             ),
-            reset_metrics,
-        ],
-        ciclo.every(steps=1): [
             ciclo.early_stopping(
                 monitor="accuracy_valid",
                 mode="max",
-                patience=500,
+                patience=eval_steps * 2,
             ),
-            ciclo.keras_bar(
-                total=ciclo.at(samples=total_samples), always_stateful=True
-            ),
+            reset_metrics,
         ],
+        ciclo.every(steps=1): ciclo.keras_bar(
+            total=ciclo.at(steps=total_steps), always_stateful=True
+        ),
     },
-    stop=ciclo.at(samples=total_samples),
+    stop=ciclo.at(steps=total_steps),
 )

@@ -1,8 +1,8 @@
+from abc import ABC, abstractmethod
 import functools
 import inspect
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from importlib import util as importlib_util
 from typing import (
     Any,
     Callable,
@@ -23,6 +23,8 @@ from flax.struct import PyTreeNode
 from pkbar import Kbar
 from tqdm import tqdm
 
+import ciclo
+
 # ---------------------------------------
 # types
 # ---------------------------------------
@@ -33,20 +35,15 @@ Statics = Any
 Logs = Dict[str, Any]
 Outputs = Dict[str, Any]
 OutputHistory = List[Outputs]
-InputCallable = Any
+InputCallable = Callable
 S = TypeVar("S", bound=State)
 B = TypeVar("B", bound=Batch)
 
 Schedule = Callable[["Elapsed"], bool]
-Callback = Callable[
-    [S, Batch, "Elapsed", "LoopState"],
-    Optional[Tuple[Optional[Logs], Optional[S]]],
-]
-GeneralCallback = Callable[
-    [S, Batch, Broadcasts, Statics],
-    Optional[Tuple[Optional[Logs], Optional[S]]],
-]
-InputTasks = Dict[Schedule, List[InputCallable]]
+CallbackOutput = Optional[Tuple[Optional[Logs], Optional[S]]]
+Callback = Callable[[S, Batch, "Elapsed", "LoopState"], CallbackOutput[S]]
+GeneralCallback = Callable[[S, Batch, Broadcasts, Statics], CallbackOutput[S]]
+InputTasks = Dict[Schedule, Union[InputCallable, List[InputCallable]]]
 ScheduleCallback = Dict[Schedule, List[Callback]]
 CallbackAdapter = Callable[[Any], Callback]
 
@@ -116,9 +113,16 @@ class Elapsed(PyTreeNode):
         return self._compare(other, lambda a, b: a != b)
 
 
+@dataclass(frozen=True)
 class Period:
-    def __init__(
-        self,
+    steps: Union[int, None]
+    samples: Union[int, None]
+    time: Union[timedelta, float, int, None]
+    date: Union[datetime, float, None]
+
+    @classmethod
+    def create(
+        cls,
         steps: Union[int, None] = None,
         samples: Union[int, None] = None,
         time: Union[timedelta, float, int, None] = None,
@@ -127,16 +131,18 @@ class Period:
         if all(x is None for x in [steps, samples, time, date]):
             raise ValueError("At least one duration parameter must be specified.")
 
-        self.steps = steps
-        self.samples = samples
-        self.time = time.total_seconds() if isinstance(time, timedelta) else time
-        self.date = date.timestamp() if isinstance(date, datetime) else date
+        return cls(
+            steps=steps,
+            samples=samples,
+            time=time.total_seconds() if isinstance(time, timedelta) else time,
+            date=date.timestamp() if isinstance(date, datetime) else date,
+        )
 
     def __repr__(self) -> str:
         params_repr = ", ".join(
             f"{k}={v}" for k, v in self.__dict__.items() if v is not None
         )
-        return f"Duration({params_repr})"
+        return f"Period({params_repr})"
 
 
 class History(List[Logs]):
@@ -151,10 +157,35 @@ class LoopState(Generic[S]):
     elapsed: Elapsed
     step_logs: Logs
     accumulated_logs: Logs
+    metadata: Any
     stop_iteration: bool = False
 
 
 LoopOutput = Tuple[S, History, Elapsed]
+
+
+class CallbackBase(ABC, Generic[S]):
+    def keys(self) -> List[Schedule]:
+        return [ciclo.every(1)]
+
+    def __getitem__(self, key: Schedule) -> List[Callback]:
+        return [self]
+
+    @abstractmethod
+    def __call__(self, *args, **kwargs) -> Optional[Tuple[Optional[Logs], Optional[S]]]:
+        ...
+
+
+@dataclass(frozen=True)
+class FunctionCallback(CallbackBase[S]):
+    f: Callable
+
+    def __call__(
+        self, state: S, batch, broadcasts, statics
+    ) -> Optional[Tuple[Optional[Logs], Optional[S]]]:
+        n_args = len(inspect.getfullargspec(self.f).args)
+        args = (state, batch, broadcasts, statics)
+        return self.f(*args[:n_args])
 
 
 # ---------------------------------------
@@ -182,71 +213,12 @@ def get_callback(f: Any) -> Callback:
     adaper = _get_adapter(type(f))
 
     if adaper is not None:
-        callback = adaper(f)
+        _callback = adaper(f)
+    elif isinstance(f, CallbackBase):
+        return f
     elif callable(f):
-        callback = f
+        _callback = FunctionCallback(f)
     else:
         raise ValueError(f"Invalid callback: {f}")
 
-    @functools.wraps(callable)
-    def callback_wrapper(
-        state: State, batch: Batch, broadcasts: Broadcasts, statics: Statics
-    ):
-        # maybe inject logs and history
-        n_args = len(inspect.getfullargspec(callback).args)
-        args = (state, batch, broadcasts, statics)
-        return callback(*args[:n_args])
-
-    return callback_wrapper
-
-
-# ---------------------------------------
-# utils
-# ---------------------------------------
-
-
-def at(
-    steps: Optional[int] = None,
-    samples: Optional[int] = None,
-    time: Optional[float] = None,
-    date: Optional[float] = None,
-) -> Period:
-    return Period(steps=steps, samples=samples, time=time, date=date)
-
-
-def get_batch_size(batch: Batch) -> int:
-    def get_size(sizes, x):
-        sizes.add(x.shape[0])
-        return sizes
-
-    sizes = jax.tree_util.tree_reduce(get_size, batch, set())
-    if len(sizes) != 1:
-        raise ValueError("Batch size must be the same for all elements in the batch.")
-    return sizes.pop()
-
-
-def is_scalar(x):
-    if isinstance(x, (int, float, bool)):
-        return True
-    elif hasattr(x, "shape"):
-        return x.shape == () or x.shape == (1,)
-    else:
-        return False
-
-
-# -------------------------------------------
-# Adapters
-# -------------------------------------------
-
-if importlib_util.find_spec("clu") is not None:
-    from clu.periodic_actions import PeriodicAction
-
-    @functools.partial(register_adapter, cls=PeriodicAction)
-    def periodic_action_adapter(f: PeriodicAction):
-        @functools.wraps(f)
-        def callback(
-            state: State, batch: Batch, elapsed: Elapsed, loop_state: LoopState
-        ):
-            f(elapsed.steps, t=elapsed.date)
-
-        return callback
+    return _callback

@@ -2,7 +2,8 @@ __version__ = "0.1.0"
 
 
 from . import managed
-from .api import Elapsed, Period, at
+from .api import Elapsed, Period
+from .utils import at, callback
 from .callbacks import (
     checkpoint,
     early_stopping,
@@ -11,7 +12,7 @@ from .callbacks import (
     tqdm_bar,
     wandb_logger,
 )
-from .loops import loop
+from .loops import loop, LoopState
 from .schedules import every
 from .strategies import (
     JIT,

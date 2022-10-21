@@ -1,3 +1,4 @@
+from time import time
 import ciclo
 import flax.linen as nn
 import jax
@@ -68,9 +69,7 @@ state, history, *_ = ciclo.loop(
             train_step,
             ciclo.keras_bar(total=total_steps),
         ],
-        ciclo.every(1000): [
-            ciclo.checkpoint("checkpoints/mnist_simple"),
-        ],
+        ciclo.every(1000): ciclo.checkpoint(f"logdir/mnist_simple/{int(time())}"),
     },
     stop=total_steps,
 )

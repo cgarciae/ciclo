@@ -3,12 +3,14 @@
 # ---------------------------------------
 
 
+import functools
+import importlib.util
 import os
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum, auto
-from typing import Any, Callable, Optional, Union, overload
-import importlib.util
+from importlib import util as importlib_util
+from typing import Any, Callable, Optional, Tuple, Union, overload
 
 from flax.training import checkpoints as flax_checkpoints
 from pkbar import Kbar
@@ -16,14 +18,17 @@ from tqdm import tqdm
 
 from ciclo.api import (
     Batch,
+    CallbackBase,
     Elapsed,
     LoopOutput,
     LoopState,
     Period,
     S,
-    get_batch_size,
-    is_scalar,
+    register_adapter,
 )
+from ciclo.schedules import every
+from ciclo.utils import get_batch_size, is_scalar
+
 
 # import wandb Run
 def _get_Run():
@@ -42,7 +47,7 @@ class OptimizationMode(str, Enum):
     max = auto()
 
 
-class inner_loop:
+class inner_loop(CallbackBase):
     @overload
     def __init__(
         self,
@@ -80,18 +85,17 @@ class inner_loop:
         self.output_state = output_state
 
     def __call__(self, state, batch, elapsed, outer_loop_state):
-        state, log_history, *_ = self.loop_fn(state)
+        state, log_history, _ = self.loop_fn(state)
         logs = log_history[-1] if len(log_history) > 0 else {}
         logs = {
             k + f"_{self.name}" if self.name else k: v
             for k, v in logs.items()
             if not isinstance(v, Elapsed)
         }
+        return logs, (state if self.output_state else None)
 
-        return logs, state if self.output_state else None
 
-
-class checkpoint:
+class checkpoint(CallbackBase):
     def __init__(
         self,
         ckpt_dir: Union[str, os.PathLike],
@@ -156,7 +160,7 @@ class checkpoint:
             )
 
 
-class early_stopping:
+class early_stopping(CallbackBase[S]):
     def __init__(
         self,
         monitor: str,
@@ -177,7 +181,9 @@ class early_stopping:
             self.mode = mode
 
         self.monitor = monitor
-        self.patience = patience if isinstance(patience, Period) else Period(patience)
+        self.patience = (
+            patience if isinstance(patience, Period) else Period.create(patience)
+        )
         self.min_delta = min_delta
         self.mode = mode
         self.baseline = baseline
@@ -187,7 +193,9 @@ class early_stopping:
         self._best_state = None
         self._elapsed_start: Optional[Elapsed] = None
 
-    def __call__(self, state, batch: Batch, elapsed: Elapsed, loop_state: LoopState):
+    def __call__(
+        self, state: S, batch: Batch, elapsed: Elapsed, loop_state: LoopState
+    ) -> Tuple[None, S]:
         if self.monitor not in loop_state.accumulated_logs:
             raise ValueError(f"Monitored value '{self.monitor}' not found in logs")
 
@@ -204,7 +212,7 @@ class early_stopping:
             self._best_state = state
             self._elapsed_start = elapsed
 
-        if self.patience >= elapsed - self._elapsed_start:
+        if elapsed - self._elapsed_start >= self.patience:
             if self.restore_best_weights and self._best_state is not None:
                 state = self._best_state
             loop_state.stop_iteration = True
@@ -212,7 +220,7 @@ class early_stopping:
         return None, state
 
 
-class tqdm_bar:
+class tqdm_bar(CallbackBase[S]):
     def __init__(
         self,
         total: Union[Period, int, None] = None,
@@ -243,7 +251,7 @@ class tqdm_bar:
     ):
 
         if isinstance(total, int):
-            total = Period(steps=total)
+            total = Period.create(steps=total)
 
         if total is not None:
             if total.steps is not None:
@@ -301,7 +309,7 @@ class tqdm_bar:
             **kwargs,
         )
 
-    def __call__(self, state, batch, elapsed: Elapsed, loop):
+    def __call__(self, state, batch, elapsed: Elapsed, loop) -> None:
 
         if self.total is None or self.total.steps is not None:
             if self.prev_step is None:
@@ -322,7 +330,7 @@ class tqdm_bar:
             raise ValueError("Invalid total")
 
 
-class keras_bar:
+class keras_bar(CallbackBase[S]):
     def __init__(
         self,
         total: Union[Period, int, None] = None,
@@ -336,7 +344,7 @@ class keras_bar:
         unit_name="step",
     ):
         if isinstance(total, int):
-            total = Period(steps=total)
+            total = Period.create(steps=total)
 
         if total is not None:
             if total.steps is not None:
@@ -393,7 +401,7 @@ class keras_bar:
         )
 
 
-class wandb_logger:
+class wandb_logger(CallbackBase[S]):
     def __init__(self, run: Run):
         self.run = run
 
@@ -401,3 +409,22 @@ class wandb_logger:
         data = {k: v for k, v in loop_state.step_logs.items() if is_scalar(v)}
         if len(data) > 0:
             self.run.log(data, step=elapsed.steps)
+
+
+# -------------------------------------------
+# Adapters
+# -------------------------------------------
+
+if importlib_util.find_spec("clu") is not None:
+    from clu.periodic_actions import PeriodicAction
+
+    @dataclass(frozen=True)
+    class PeriodicActionCallback(CallbackBase[S]):
+        action: PeriodicAction
+
+        def __call__(self, state, batch, elapsed: Elapsed, loop_state: LoopState):
+            self.action(elapsed.steps, t=elapsed.date)
+
+    @functools.partial(register_adapter, cls=PeriodicAction)
+    def periodic_action_adapter(f: PeriodicAction):
+        return PeriodicActionCallback(f)

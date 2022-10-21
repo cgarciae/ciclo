@@ -13,7 +13,7 @@ class every:
         time: Union[timedelta, float, int, None] = None,
         steps_offset: int = 0,
     ) -> None:
-        self.period = Period(steps=steps, samples=samples, time=time)
+        self.period = Period.create(steps=steps, samples=samples, time=time)
         self.last_samples: int = 0
         self.last_time: float = datetime.now().timestamp()
         self.steps_offset: int = steps_offset

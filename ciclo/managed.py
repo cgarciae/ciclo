@@ -15,6 +15,8 @@ from flax.training import train_state
 from typing_extensions import Protocol, runtime_checkable
 from ciclo.api import (
     Broadcasts,
+    CallbackBase,
+    CallbackOutput,
     Elapsed,
     Logs,
     State,
@@ -175,7 +177,7 @@ class ManagedState(train_state.TrainState):
         return state.replace(strategy=new_strategy)
 
 
-class Managed(Generic[S]):
+class Managed(CallbackBase[S]):
     @abstractmethod
     def __call__(
         self, state: S, batch: Batch, broadcasts: Broadcasts, statics: Statics
@@ -190,7 +192,7 @@ class ManagedStepBase(Managed[S]):
 
     def __call__(
         self, state: S, batch: Batch, broadcasts: Broadcasts, statics: Statics
-    ) -> Tuple[Logs, S]:
+    ) -> CallbackOutput[S]:
 
         if isinstance(state, HasStrategy):
             strategy = state.strategy
@@ -204,8 +206,7 @@ class ManagedStepBase(Managed[S]):
         callback = self.strategy_callbacks[strategy]
 
         batch = strategy.lift_batch(batch)
-        logs, state = callback(state, batch, broadcasts, statics)
-        return logs, state
+        return callback(state, batch, broadcasts, statics)
 
     @abstractmethod
     def get_callback(self, strategy: Strategy) -> GeneralCallback:

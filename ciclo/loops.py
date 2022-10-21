@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Generic, List, Optional, Union
+from typing import Any, List, Optional, Union
 from ciclo.api import (
     S,
     Batch,
@@ -12,9 +12,9 @@ from ciclo.api import (
     LoopOutput,
     LoopState,
     Period,
-    get_batch_size,
     get_callback,
 )
+from ciclo.utils import get_batch_size
 
 
 def loop(
@@ -28,10 +28,11 @@ def loop(
     history: Optional[History] = None,
     elapsed: Optional[Elapsed] = None,
     catch_keyboard_interrupt: bool = True,
+    metadata: Optional[Any] = None,
 ) -> LoopOutput[S]:
 
     if isinstance(stop, int):
-        stop_period = Period(steps=stop)
+        stop_period = Period.create(steps=stop)
     else:
         stop_period = stop
 
@@ -47,12 +48,19 @@ def loop(
         elapsed=elapsed,
         step_logs={},
         accumulated_logs={},
+        metadata=metadata,
     )
 
-    tasks_ = {
-        schedule: [get_callback(f) for f in callbacks]
+    tasks_ = [
+        (
+            schedule,
+            [
+                get_callback(f)
+                for f in (callbacks if isinstance(callbacks, list) else [callbacks])
+            ],
+        )
         for schedule, callbacks in tasks.items()
-    }
+    ]
 
     batch = None
 
@@ -68,7 +76,7 @@ def loop(
                     _make_call(loop_state, callback, batch)
 
             loop_state.step_logs = {}
-            for schedule, callbacks in tasks_.items():
+            for s, (schedule, callbacks) in enumerate(tasks_):
                 if schedule(loop_state.elapsed):
                     for callback in callbacks:
                         _make_call(loop_state, callback, batch)
@@ -82,7 +90,7 @@ def loop(
                 loop_state.history.append(loop_state.step_logs)
 
             if loop_state.stop_iteration or (
-                stop_period is not None and loop_state.elapsed > stop_period
+                stop_period is not None and loop_state.elapsed >= stop_period
             ):
                 break
 
@@ -103,17 +111,12 @@ def loop(
 
 
 def _make_call(loop_state: LoopState, callback: Callback, batch: Batch):
-    try:
-        loop_state.elapsed = loop_state.elapsed.update_time()
-        callback_outputs = callback(
-            loop_state.state, batch, loop_state.elapsed, loop_state
-        )
-        if callback_outputs is not None:
-            logs, state = callback_outputs
-            if logs is not None:
-                loop_state.step_logs.update(logs)
-                loop_state.accumulated_logs.update(logs)
-            if state is not None:
-                loop_state.state = state
-    except BaseException as e:
-        raise RuntimeError(f"Error in callback {callback}") from e
+    loop_state.elapsed = loop_state.elapsed.update_time()
+    callback_outputs = callback(loop_state.state, batch, loop_state.elapsed, loop_state)
+    if callback_outputs is not None:
+        logs, state = callback_outputs
+        if logs is not None:
+            loop_state.step_logs.update(logs)
+            loop_state.accumulated_logs.update(logs)
+        if state is not None:
+            loop_state.state = state

@@ -4,7 +4,7 @@ import ciclo
 class TestAPI:
     def test_elapsed_gt_period(self):
 
-        period = ciclo.Period(steps=10)
+        period = ciclo.Period.create(steps=10)
         elapsed = ciclo.Elapsed.create()
 
         assert elapsed < period
