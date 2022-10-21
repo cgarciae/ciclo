@@ -84,6 +84,37 @@ class Elapsed(PyTreeNode):
             _date_start=other._date_start,
         )
 
+    def _compare(
+        self, other: "Period", predicate: Callable[[float, float], bool]
+    ) -> bool:
+        if other.steps is not None and predicate(self.steps, other.steps):
+            return True
+        if other.samples is not None and predicate(self.samples, other.samples):
+            return True
+        if other.time is not None and predicate(self.time, other.time):
+            return True
+        if other.date is not None and predicate(self.date, other.date):
+            return True
+        return False
+
+    def __ge__(self, other: "Period") -> bool:
+        return self._compare(other, lambda a, b: a >= b)
+
+    def __gt__(self, other: "Period") -> bool:
+        return self._compare(other, lambda a, b: a > b)
+
+    def __le__(self, other: "Period") -> bool:
+        return self._compare(other, lambda a, b: a <= b)
+
+    def __lt__(self, other: "Period") -> bool:
+        return self._compare(other, lambda a, b: a < b)
+
+    def __eq__(self, other: "Period") -> bool:
+        return self._compare(other, lambda a, b: a == b)
+
+    def __ne__(self, other: "Period") -> bool:
+        return self._compare(other, lambda a, b: a != b)
+
 
 class Period:
     def __init__(
@@ -106,17 +137,6 @@ class Period:
             f"{k}={v}" for k, v in self.__dict__.items() if v is not None
         )
         return f"Duration({params_repr})"
-
-    def __ge__(self, other: Elapsed) -> bool:
-        if self.steps is not None and other.steps >= self.steps:
-            return True
-        if self.samples is not None and other.samples >= self.samples:
-            return True
-        if self.time is not None and other.time >= self.time:
-            return True
-        if self.date is not None and other.date >= self.date:
-            return True
-        return False
 
 
 class History(List[Logs]):

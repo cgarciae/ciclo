@@ -3,28 +3,41 @@
 # ---------------------------------------
 
 
+import os
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum, auto
-import os
-from typing import Callable, Optional, Union, overload
-from tqdm import tqdm
-from pkbar import Kbar
+from typing import Any, Callable, Optional, Union, overload
+import importlib.util
+
 from flax.training import checkpoints as flax_checkpoints
+from pkbar import Kbar
+from tqdm import tqdm
 
 from ciclo.api import (
-    S,
     Batch,
     Elapsed,
     LoopOutput,
     LoopState,
     Period,
+    S,
     get_batch_size,
     is_scalar,
 )
 
+# import wandb Run
+def _get_Run():
+    if importlib.util.find_spec("wandb") is not None:
+        from wandb.wandb_run import Run
+    else:
+        locals()["Run"] = Any
+    return Run
 
-class OptimizationMode(Enum):
+
+Run = _get_Run()
+
+
+class OptimizationMode(str, Enum):
     min = auto()
     max = auto()
 
@@ -90,12 +103,15 @@ class checkpoint:
         monitor: Optional[str] = None,
         mode: Union[str, OptimizationMode] = "min",
     ):
+        if isinstance(mode, str):
+            mode = OptimizationMode[mode]
+
         if mode not in OptimizationMode:
             raise ValueError(
                 f"Invalid mode: {mode}, expected one of {list(OptimizationMode)}"
             )
         else:
-            self.mode = OptimizationMode(mode)
+            self.mode = mode
 
         self.ckpt_dir = ckpt_dir
         self.prefix = prefix
@@ -113,7 +129,6 @@ class checkpoint:
         overwrite = self.overwrite
 
         if self.monitor is not None:
-            overwrite = True
             if self.monitor not in loop_state.accumulated_logs:
                 raise ValueError(f"Monitored value '{self.monitor}' not found in logs")
 
@@ -124,7 +139,7 @@ class checkpoint:
                 or (not self.minimize and value > self._best)
             ):
                 self._best = value
-                step_or_metric = value
+                step_or_metric = value if self.mode == OptimizationMode.max else -value
             else:
                 save_checkpoint = False
 
@@ -151,12 +166,15 @@ class early_stopping:
         baseline: Optional[float] = None,
         restore_best_weights: bool = False,
     ):
+        if isinstance(mode, str):
+            mode = OptimizationMode[mode]
+
         if mode not in OptimizationMode:
             raise ValueError(
                 f"Invalid mode: {mode}, expected one of {list(OptimizationMode)}"
             )
         else:
-            self.mode = OptimizationMode(mode)
+            self.mode = mode
 
         self.monitor = monitor
         self.patience = patience if isinstance(patience, Period) else Period(patience)
@@ -373,3 +391,13 @@ class keras_bar:
             current,
             values=[(k, v) for k, v in loop_state.step_logs.items() if is_scalar(v)],
         )
+
+
+class wandb_logger:
+    def __init__(self, run: Run):
+        self.run = run
+
+    def __call__(self, state, batch, elapsed: Elapsed, loop_state: LoopState):
+        data = {k: v for k, v in loop_state.step_logs.items() if is_scalar(v)}
+        if len(data) > 0:
+            self.run.log(data, step=elapsed.steps)

@@ -31,7 +31,9 @@ def loop(
 ) -> LoopOutput[S]:
 
     if isinstance(stop, int):
-        stop = Period(steps=stop)
+        stop_period = Period(steps=stop)
+    else:
+        stop_period = stop
 
     if history is None:
         history = History()
@@ -80,7 +82,7 @@ def loop(
                 loop_state.history.append(loop_state.step_logs)
 
             if loop_state.stop_iteration or (
-                stop is not None and stop >= loop_state.elapsed
+                stop_period is not None and loop_state.elapsed > stop_period
             ):
                 break
 
@@ -101,12 +103,17 @@ def loop(
 
 
 def _make_call(loop_state: LoopState, callback: Callback, batch: Batch):
-    loop_state.elapsed = loop_state.elapsed.update_time()
-    callback_outputs = callback(loop_state.state, batch, loop_state.elapsed, loop_state)
-    if callback_outputs is not None:
-        logs, state = callback_outputs
-        if logs is not None:
-            loop_state.step_logs.update(logs)
-            loop_state.accumulated_logs.update(logs)
-        if state is not None:
-            loop_state.state = state
+    try:
+        loop_state.elapsed = loop_state.elapsed.update_time()
+        callback_outputs = callback(
+            loop_state.state, batch, loop_state.elapsed, loop_state
+        )
+        if callback_outputs is not None:
+            logs, state = callback_outputs
+            if logs is not None:
+                loop_state.step_logs.update(logs)
+                loop_state.accumulated_logs.update(logs)
+            if state is not None:
+                loop_state.state = state
+    except BaseException as e:
+        raise RuntimeError(f"Error in callback {callback}") from e
