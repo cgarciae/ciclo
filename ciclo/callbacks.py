@@ -411,6 +411,13 @@ class wandb_logger(CallbackBase[S]):
             self.run.log(data, step=elapsed.steps)
 
 
+class NoOp(CallbackBase[S]):
+    def __call__(self, state, batch, elapsed: Elapsed, loop_state: LoopState):
+        pass
+
+
+noop = NoOp()
+
 # -------------------------------------------
 # Adapters
 # -------------------------------------------

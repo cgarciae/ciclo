@@ -1,12 +1,16 @@
+# %%
 from time import time
+
 import ciclo
 import flax.linen as nn
 import jax
 import jax.numpy as jnp
+import matplotlib.pyplot as plt
 import optax
 import tensorflow as tf
 import tensorflow_datasets as tfds
 from flax.training.train_state import TrainState
+import numpy as np
 
 # load the MNIST dataset
 ds_train: tf.data.Dataset = tfds.load("mnist", split="train", shuffle_files=True)
@@ -73,3 +77,19 @@ state, history, *_ = ciclo.loop(
     },
     stop=total_steps,
 )
+
+# plot the training history
+steps, loss, accuracy = history["steps", "loss", "accuracy"]
+steps, loss, accuracy = np.array(steps), np.array(loss), np.array(accuracy)
+# calculate the moving average
+loss_ma = np.convolve(loss, np.ones(100) / 100, mode="valid")
+
+# use subplots to plot loss and accuracy on the same figure
+fig, axs = plt.subplots(1, 2)
+axs[0].plot(loss_ma)
+axs[0].set_title("Loss")
+axs[1].plot(steps, accuracy)
+axs[1].set_title("Accuracy")
+plt.show()
+
+# %%

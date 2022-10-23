@@ -130,5 +130,5 @@ dmypy.json
 
 # custom
 /.vscode
-/logdir
+logdir
 checkpoints

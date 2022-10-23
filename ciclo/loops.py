@@ -111,12 +111,17 @@ def loop(
 
 
 def _make_call(loop_state: LoopState, callback: Callback, batch: Batch):
-    loop_state.elapsed = loop_state.elapsed.update_time()
-    callback_outputs = callback(loop_state.state, batch, loop_state.elapsed, loop_state)
-    if callback_outputs is not None:
-        logs, state = callback_outputs
-        if logs is not None:
-            loop_state.step_logs.update(logs)
-            loop_state.accumulated_logs.update(logs)
-        if state is not None:
-            loop_state.state = state
+    try:
+        loop_state.elapsed = loop_state.elapsed.update_time()
+        callback_outputs = callback(
+            loop_state.state, batch, loop_state.elapsed, loop_state
+        )
+        if callback_outputs is not None:
+            logs, state = callback_outputs
+            if logs is not None:
+                loop_state.step_logs.update(logs)
+                loop_state.accumulated_logs.update(logs)
+            if state is not None:
+                loop_state.state = state
+    except BaseException as e:
+        raise type(e)(f"Error in callback {callback}: {e}") from e

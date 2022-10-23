@@ -7,6 +7,7 @@ F = TypeVar("F", bound=Callable[..., Any])
 
 def at(
     steps: Optional[int] = None,
+    *,
     samples: Optional[int] = None,
     time: Optional[float] = None,
     date: Optional[float] = None,

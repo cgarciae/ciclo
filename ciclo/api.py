@@ -146,8 +146,49 @@ class Period:
 
 
 class History(List[Logs]):
-    def get_all(self, key: str) -> List[Tuple[Elapsed, Any]]:
-        return [(logs["elapsed"], logs[key]) for logs in self if key in logs]
+    @overload
+    def __getitem__(self, index: int) -> Logs:
+        ...
+
+    @overload
+    def __getitem__(self, index: str) -> List[Any]:
+        ...
+
+    @overload
+    def __getitem__(self, index: Tuple[str, ...]) -> Tuple[List[Any], ...]:
+        ...
+
+    def __getitem__(
+        self, index: Union[int, str, Tuple[str, ...]]
+    ) -> Union[Logs, List[Any], Tuple[List[Any], ...]]:
+        if isinstance(index, int):
+            return super().__getitem__(index)
+
+        if isinstance(index, str):
+            keys = (index,)
+        else:
+            keys = index
+
+        outputs = tuple([] for _ in keys)
+        for logs in self:
+            if all(self._has_key(logs, key) for key in keys):
+                for i, key in enumerate(keys):
+                    outputs[i].append(self._get_key(logs, key))
+
+        return outputs if len(keys) > 1 else outputs[0]
+
+    @staticmethod
+    def _has_key(logs: Logs, key: str) -> Any:
+        return key in logs or ("elapsed" in logs and hasattr(logs["elapsed"], key))
+
+    @staticmethod
+    def _get_key(logs: Logs, key: str) -> Any:
+        if key in logs:
+            return logs[key]
+        elif "elapsed" in logs and hasattr(logs["elapsed"], key):
+            return getattr(logs["elapsed"], key)
+        else:
+            raise KeyError(f"Key {key} not found in logs.")
 
 
 @dataclass
