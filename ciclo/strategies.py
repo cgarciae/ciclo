@@ -20,7 +20,7 @@ from einop import einop
 from flax import jax_utils
 from flax.training import train_state
 from typing_extensions import Protocol, runtime_checkable
-from ciclo.api import GeneralCallback, Logs
+from ciclo.api import GeneralCallback, LogsLike
 
 if importlib_util.find_spec("clu"):
     from clu.metrics import Metric
@@ -175,8 +175,8 @@ class Strategy(ABC):
 
     def handle_logs(
         self,
-        logs: Logs,
-    ) -> Logs:
+        logs: LogsLike,
+    ) -> LogsLike:
         return logs
 
     @abstractmethod
@@ -257,7 +257,7 @@ class DataParallel(Strategy):
     def handle_batch_stats(self, batch_stats: A) -> A:
         return jax.lax.pmean(batch_stats, axis_name=self.axis_name)
 
-    def handle_logs(self, logs: Logs) -> Logs:
+    def handle_logs(self, logs: LogsLike) -> LogsLike:
         return jax.lax.pmean(logs, axis_name=self.axis_name)
 
     def __call__(self, callback: GeneralCallback) -> GeneralCallback:

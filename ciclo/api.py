@@ -8,7 +8,10 @@ from typing import (
     Callable,
     Dict,
     Generic,
+    Iterable,
     List,
+    Mapping,
+    MutableMapping,
     NamedTuple,
     Optional,
     Tuple,
@@ -32,15 +35,13 @@ State = Any
 Batch = Any
 Broadcasts = Any
 Statics = Any
-Logs = Dict[str, Any]
-Outputs = Dict[str, Any]
-OutputHistory = List[Outputs]
+LogsLike = Dict[str, Mapping[str, Any]]
 InputCallable = Callable
 S = TypeVar("S", bound=State)
 B = TypeVar("B", bound=Batch)
 
 Schedule = Callable[["Elapsed"], bool]
-CallbackOutput = Optional[Tuple[Optional[Logs], Optional[S]]]
+CallbackOutput = Optional[Tuple[Optional[LogsLike], Optional[S]]]
 Callback = Callable[[S, Batch, "Elapsed", "LoopState"], CallbackOutput[S]]
 GeneralCallback = Callable[[S, Batch, Broadcasts, Statics], CallbackOutput[S]]
 InputTasks = Dict[Schedule, Union[InputCallable, List[InputCallable]]]
@@ -48,7 +49,7 @@ ScheduleCallback = Dict[Schedule, List[Callback]]
 CallbackAdapter = Callable[[Any], Callback]
 
 
-class Elapsed(PyTreeNode):
+class Elapsed(PyTreeNode, Mapping[str, Any]):
     steps: int
     samples: int
     date: float
@@ -112,13 +113,28 @@ class Elapsed(PyTreeNode):
     def __ne__(self, other: "Period") -> bool:
         return self._compare(other, lambda a, b: a != b)
 
+    # Mapping
+    def __iter__(self) -> Iterable[str]:
+        return self.__dict__.keys()
+
+    def __getitem__(self, key: str) -> Any:
+        if hasattr(self, key):
+            return getattr(self, key)
+        raise KeyError(key)
+
+    def __contains__(self, key: str) -> bool:
+        return hasattr(self, key)
+
+    def __len__(self) -> int:
+        return len(self.__dict__)
+
 
 @dataclass(frozen=True)
 class Period:
     steps: Union[int, None]
     samples: Union[int, None]
-    time: Union[timedelta, float, int, None]
-    date: Union[datetime, float, None]
+    time: Union[float, int, None]
+    date: Union[float, None]
 
     @classmethod
     def create(
@@ -145,50 +161,96 @@ class Period:
         return f"Period({params_repr})"
 
 
+class Logs(Dict[str, Union[Dict[str, Any], Elapsed]]):
+    def subkey_value(self, key: str) -> Any:
+        path = self.subkey_path(key)
+        if path is None:
+            raise KeyError(f"Key {key} not found in logs.")
+        return self.path_value(path)
+
+    def subkey_path(self, key: str) -> Optional[Tuple[str, str]]:
+        path = key.split(".")
+
+        if len(path) == 1:
+            key = path[0]
+            collection = self.subkey_collection(key)
+            if collection is None:
+                return None
+        elif len(path) == 2:
+            collection, key = path
+        else:
+            raise ValueError(f"Got more than 2 levels of nesting in key '{key}'")
+
+        return collection, key
+
+    def subkey_collection(self, key: str) -> Optional[str]:
+        collections = [col for col in self if key in self[col]]
+
+        if len(collections) == 0:
+            return None
+        elif len(collections) == 1:
+            return collections[0]
+        else:
+            raise ValueError(
+                f"Found multiple collections for key {key}: {collections}. "
+                "Use `collection.key` syntax."
+            )
+
+    def path_value(self, path: Tuple[str, str]) -> Any:
+        collection, key = path
+        return self[collection][key]
+
+    def merge(self, collection_updates: LogsLike):
+        for name, updates in collection_updates.items():
+            if not isinstance(updates, Mapping):
+                raise ValueError(
+                    f"Invalide value '{updates}' for collection '{name}', value must be a Mapping"
+                )
+            if name in self:
+                collection = self[name]
+                if isinstance(collection, Dict):
+                    collection.update(updates)
+                elif isinstance(collection, Elapsed):
+                    if not isinstance(updates, Elapsed):
+                        raise ValueError(
+                            f"Cannot merge Elapsed with {type(updates)} for collection '{name}'"
+                        )
+                    self[name] = updates
+                else:
+                    raise ValueError(
+                        f"Cannot update non-MutableMapping collection '{name}' of type '{type(collection).__name__}'"
+                    )
+            else:
+                if isinstance(updates, Dict):
+                    self[name] = updates.copy()
+                elif isinstance(updates, Elapsed):
+                    self[name] = updates
+                else:
+                    self[name] = dict(updates)
+
+
 class History(List[Logs]):
     @overload
-    def __getitem__(self, index: int) -> Logs:
+    def collect(self, key: str) -> List[Any]:
         ...
 
     @overload
-    def __getitem__(self, index: str) -> List[Any]:
+    def collect(self, key: str, *keys: str) -> Tuple[List[Any], ...]:
         ...
 
-    @overload
-    def __getitem__(self, index: Tuple[str, ...]) -> Tuple[List[Any], ...]:
-        ...
-
-    def __getitem__(
-        self, index: Union[int, str, Tuple[str, ...]]
+    def collect(
+        self, key: str, *keys: str
     ) -> Union[Logs, List[Any], Tuple[List[Any], ...]]:
-        if isinstance(index, int):
-            return super().__getitem__(index)
-
-        if isinstance(index, str):
-            keys = (index,)
-        else:
-            keys = index
-
+        keys = (key,) + keys
         outputs = tuple([] for _ in keys)
         for logs in self:
-            if all(self._has_key(logs, key) for key in keys):
-                for i, key in enumerate(keys):
-                    outputs[i].append(self._get_key(logs, key))
+            paths = [logs.subkey_path(key) for key in keys]
+            if all(path is not None for path in paths):
+                for i, path in enumerate(paths):
+                    assert path is not None
+                    outputs[i].append(logs.path_value(path))
 
         return outputs if len(keys) > 1 else outputs[0]
-
-    @staticmethod
-    def _has_key(logs: Logs, key: str) -> Any:
-        return key in logs or ("elapsed" in logs and hasattr(logs["elapsed"], key))
-
-    @staticmethod
-    def _get_key(logs: Logs, key: str) -> Any:
-        if key in logs:
-            return logs[key]
-        elif "elapsed" in logs and hasattr(logs["elapsed"], key):
-            return getattr(logs["elapsed"], key)
-        else:
-            raise KeyError(f"Key {key} not found in logs.")
 
 
 @dataclass
@@ -213,7 +275,9 @@ class CallbackBase(ABC, Generic[S]):
         return [self]
 
     @abstractmethod
-    def __call__(self, *args, **kwargs) -> Optional[Tuple[Optional[Logs], Optional[S]]]:
+    def __call__(
+        self, *args, **kwargs
+    ) -> Optional[Tuple[Optional[LogsLike], Optional[S]]]:
         ...
 
 
@@ -221,12 +285,14 @@ class CallbackBase(ABC, Generic[S]):
 class FunctionCallback(CallbackBase[S]):
     f: Callable
 
-    def __call__(
-        self, state: S, batch, broadcasts, statics
-    ) -> Optional[Tuple[Optional[Logs], Optional[S]]]:
-        n_args = len(inspect.getfullargspec(self.f).args)
-        args = (state, batch, broadcasts, statics)
-        return self.f(*args[:n_args])
+    def __call__(self, state: S, batch, broadcasts, statics) -> CallbackOutput[S]:
+        return inject(self.f, state, batch, broadcasts, statics)
+
+
+def inject(f, state: S, batch, broadcasts, statics) -> CallbackOutput[S]:
+    n_args = len(inspect.getfullargspec(f).args)
+    args = (state, batch, broadcasts, statics)
+    return f(*args[:n_args])
 
 
 # ---------------------------------------
@@ -254,12 +320,10 @@ def get_callback(f: Any) -> Callback:
     adaper = _get_adapter(type(f))
 
     if adaper is not None:
-        _callback = adaper(f)
+        return adaper(f)
     elif isinstance(f, CallbackBase):
         return f
     elif callable(f):
-        _callback = FunctionCallback(f)
+        return f
     else:
         raise ValueError(f"Invalid callback: {f}")
-
-    return _callback

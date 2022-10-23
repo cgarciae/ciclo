@@ -1,15 +1,18 @@
+# %%
 from time import time
+
+import ciclo
 import flax.linen as nn
 import jax
 import jax.numpy as jnp
+import matplotlib.pyplot as plt
 import numpy as np
 import optax
-import tensorflow_datasets as tfds
 import tensorflow as tf
-from flax.training import train_state
-import ciclo
-from clu.metrics import Collection, Accuracy, Average
+import tensorflow_datasets as tfds
+from clu.metrics import Accuracy, Average, Collection
 from flax import struct
+from flax.training import train_state
 
 # load the MNIST dataset
 ds_train: tf.data.Dataset = tfds.load("mnist", split="train", shuffle_files=True)
@@ -24,15 +27,15 @@ class CNN(nn.Module):
     @nn.compact
     def __call__(self, x):
         x = x / 255.0
-        x = nn.Conv(features=32, kernel_size=(3, 3))(x)
-        x = nn.relu(x)
-        x = nn.avg_pool(x, window_shape=(2, 2), strides=(2, 2))
-        x = nn.Conv(features=64, kernel_size=(3, 3))(x)
-        x = nn.relu(x)
-        x = nn.avg_pool(x, window_shape=(2, 2), strides=(2, 2))
+        # x = nn.Conv(features=32, kernel_size=(3, 3))(x)
+        # x = nn.relu(x)
+        # x = nn.avg_pool(x, window_shape=(2, 2), strides=(2, 2))
+        # x = nn.Conv(features=64, kernel_size=(3, 3))(x)
+        # x = nn.relu(x)
+        # x = nn.avg_pool(x, window_shape=(2, 2), strides=(2, 2))
         x = x.reshape((x.shape[0], -1))  # flatten
-        x = nn.Dense(features=256)(x)
-        x = nn.relu(x)
+        # x = nn.Dense(features=256)(x)
+        # x = nn.relu(x)
         x = nn.Dense(features=10)(x)
         return x
 
@@ -68,7 +71,8 @@ def train_step(state: TrainState, batch):
 
 @jax.jit
 def compute_metrics(state: TrainState, batch, _):
-    return state.metrics.compute(), None
+    logs = state.metrics.compute()
+    return {"stateful_metrics": logs}, None
 
 
 @jax.jit
@@ -79,7 +83,7 @@ def eval_step(state: TrainState, batch, _):
     ).mean()
     metrics = state.metrics.update(loss=loss, logits=logits, labels=batch["label"])
     logs = metrics.compute()
-    return logs, state.replace(metrics=metrics)
+    return {"stateful_metrics": logs}, state.replace(metrics=metrics)
 
 
 def reset_metrics(state: TrainState, batch, _):
@@ -100,7 +104,7 @@ state = TrainState.create(
 total_steps = 10_000
 eval_steps = 1_000
 log_steps = 200
-state, log_history, _ = ciclo.loop(
+state, history, _ = ciclo.loop(
     state,
     ds_train.as_numpy_iterator(),
     {
@@ -119,8 +123,31 @@ state, log_history, _ = ciclo.loop(
             ciclo.checkpoint(
                 f"logdir/mnist_full/{int(time())}", monitor="accuracy_valid", mode="max"
             ),
+            ciclo.early_stopping(
+                monitor="accuracy_valid",
+                mode="max",
+                patience=eval_steps * 2,
+            ),
         ],
-        **ciclo.keras_bar(total=total_steps, always_stateful=True),
+        **ciclo.keras_bar(total=total_steps),
     },
     stop=total_steps,
 )
+
+# %%
+
+steps, loss, accuracy = history.collect("steps", "loss", "accuracy")
+steps_valid, loss_valid, accuracy_valid = history.collect(
+    "steps", "loss_valid", "accuracy_valid"
+)
+
+_, axs = plt.subplots(1, 2)
+axs[0].plot(steps, loss, label="train")
+axs[0].plot(steps_valid, loss_valid, label="valid")
+axs[0].legend()
+axs[0].set_title("Loss")
+axs[1].plot(steps, accuracy, label="train")
+axs[1].plot(steps_valid, accuracy_valid, label="valid")
+axs[1].legend()
+axs[1].set_title("Accuracy")
+plt.show()

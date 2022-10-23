@@ -18,7 +18,7 @@ from ciclo.api import (
     CallbackBase,
     CallbackOutput,
     Elapsed,
-    Logs,
+    LogsLike,
     State,
     Statics,
     register_adapter,
@@ -59,13 +59,13 @@ class LossFn(Generic[S], Protocol):
 class StepFn(Generic[S], Protocol):
     def __call__(
         self, state: S, batch: Batch, *args
-    ) -> Optional[Tuple[Optional[Logs], Optional[S]]]:
+    ) -> Optional[Tuple[Optional[LogsLike], Optional[S]]]:
         ...
 
 
 @dataclass
 class _ManagedContext:
-    logs: Logs
+    logs: LogsLike
     trace_level: float
     managed_state_copy: "ManagedState"
 
@@ -96,7 +96,7 @@ def _call_managed(
     batch: Batch,
     broadcasts: Broadcasts,
     statics: Statics,
-) -> Tuple[Loss, Tuple[Logs, S]]:
+) -> Tuple[Loss, Tuple[LogsLike, S]]:
     with _managed_context(state) as managed_context:
         loss, state = loss_fn(state, batch, broadcasts, statics)
         logs = {}
@@ -227,7 +227,7 @@ class ManagedEvalStep(ManagedStepBase[S]):
 
     def __call__(
         self, state: S, batch: Batch, broadcasts: Broadcasts, statics: Statics
-    ) -> Tuple[Logs, S]:
+    ) -> Tuple[LogsLike, S]:
 
         if isinstance(state, HasStrategy):
             strategy = state.strategy
@@ -247,7 +247,7 @@ class ManagedEvalStep(ManagedStepBase[S]):
     def get_callback(self, strategy: Strategy) -> GeneralCallback:
         def callback(
             state: S, batch: Batch, broadcasts: Broadcasts, statics: Statics
-        ) -> Tuple[Logs, S]:
+        ) -> Tuple[LogsLike, S]:
 
             loss, (logs, state) = _call_managed(
                 strategy=strategy,
@@ -272,7 +272,7 @@ class ManagedTrainStep(ManagedStepBase[S]):
     def get_callback(self, strategy: Strategy) -> GeneralCallback:
         def callback(
             state: S, batch: Batch, broadcasts: Broadcasts, statics: Statics
-        ) -> Tuple[Logs, S]:
+        ) -> Tuple[LogsLike, S]:
             def loss_fn(params):
                 return _call_managed(
                     strategy=strategy,

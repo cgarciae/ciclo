@@ -1,22 +1,35 @@
-from typing import Union
+from dataclasses import dataclass
+from typing import Dict, List, Optional, Tuple, Union
 from datetime import datetime, timedelta
 
-from ciclo.api import Elapsed, Period
+from ciclo.api import Callback, Elapsed, Period, Schedule
+
+# ---------------------------------------
+# every
+# ---------------------------------------
 
 
-class every:
-    def __init__(
-        self,
-        steps: Union[int, None] = None,
-        *,
-        samples: Union[int, None] = None,
-        time: Union[timedelta, float, int, None] = None,
-        steps_offset: int = 0,
-    ) -> None:
-        self.period = Period.create(steps=steps, samples=samples, time=time)
-        self.last_samples: int = 0
-        self.last_time: float = datetime.now().timestamp()
-        self.steps_offset: int = steps_offset
+def every(
+    steps: Union[int, None] = None,
+    *,
+    samples: Union[int, None] = None,
+    time: Union[timedelta, float, int, None] = None,
+    steps_offset: int = 0,
+) -> Schedule:
+    return Every(
+        period=Period.create(steps=steps, samples=samples, time=time),
+        last_samples=0,
+        last_time=datetime.now().timestamp(),
+        steps_offset=steps_offset,
+    )
+
+
+@dataclass(unsafe_hash=True)
+class Every:
+    period: Period
+    last_samples: int
+    last_time: float
+    steps_offset: int
 
     def __call__(self, elapsed: Elapsed) -> bool:
 
@@ -35,3 +48,33 @@ class every:
                 return True
 
         return False
+
+
+# ---------------------------------------
+# piecewise
+# ---------------------------------------
+
+
+def piecewise(
+    schedule: Schedule,
+    period_schedules: Dict[Period, Schedule],
+) -> Schedule:
+    return Piecewise(
+        schedule=schedule,
+        period_schedules=list(period_schedules.items()),
+    )
+
+
+@dataclass
+class Piecewise:
+    schedule: Schedule
+    period_schedules: List[Tuple[Period, Schedule]]
+
+    def __call__(self, elapsed: Elapsed) -> bool:
+        if len(self.period_schedules) > 0:
+            period, next_schedule = self.period_schedules[0]
+            if elapsed >= period:
+                self.schedule = next_schedule
+                self.period_schedules = self.period_schedules[1:]
+
+        return self.schedule(elapsed)

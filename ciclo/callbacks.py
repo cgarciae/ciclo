@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum, auto
 from importlib import util as importlib_util
-from typing import Any, Callable, Optional, Tuple, Union, overload
+from typing import Any, Callable, Dict, Optional, Tuple, Union, overload
 
 from flax.training import checkpoints as flax_checkpoints
 from pkbar import Kbar
@@ -88,9 +88,13 @@ class inner_loop(CallbackBase):
         state, log_history, _ = self.loop_fn(state)
         logs = log_history[-1] if len(log_history) > 0 else {}
         logs = {
-            k + f"_{self.name}" if self.name else k: v
-            for k, v in logs.items()
-            if not isinstance(v, Elapsed)
+            collection: {
+                k + f"_{self.name}" if self.name else k: v
+                for k, v in values.items()
+                if not isinstance(v, Elapsed)
+            }
+            for collection, values in logs.items()
+            if collection != "elapsed"
         }
         return logs, (state if self.output_state else None)
 
@@ -133,10 +137,11 @@ class checkpoint(CallbackBase):
         overwrite = self.overwrite
 
         if self.monitor is not None:
-            if self.monitor not in loop_state.accumulated_logs:
+            try:
+                value = loop_state.accumulated_logs.subkey_value(self.monitor)
+            except KeyError:
                 raise ValueError(f"Monitored value '{self.monitor}' not found in logs")
 
-            value = loop_state.accumulated_logs[self.monitor]
             if (
                 self._best is None
                 or (self.minimize and value < self._best)
@@ -196,13 +201,15 @@ class early_stopping(CallbackBase[S]):
     def __call__(
         self, state: S, batch: Batch, elapsed: Elapsed, loop_state: LoopState
     ) -> Tuple[None, S]:
-        if self.monitor not in loop_state.accumulated_logs:
-            raise ValueError(f"Monitored value '{self.monitor}' not found in logs")
 
         if self._elapsed_start is None:
             self._elapsed_start = Elapsed.create()
 
-        value = loop_state.accumulated_logs[self.monitor]
+        try:
+            value = loop_state.accumulated_logs.subkey_value(self.monitor)
+        except KeyError:
+            raise ValueError(f"Monitored value '{self.monitor}' not found in logs")
+
         if (
             self._best is None
             or (self.minimize and value < self._best)
@@ -395,10 +402,20 @@ class keras_bar(CallbackBase[S]):
         else:
             raise ValueError("Invalid total")
 
-        self.bar.update(
-            current,
-            values=[(k, v) for k, v in loop_state.step_logs.items() if is_scalar(v)],
-        )
+        metrics: Dict[str, Any] = {}
+        if "stateful_metrics" in loop_state.step_logs:
+            stateful_metrics = loop_state.step_logs["stateful_metrics"]
+            self.bar.stateful_metrics.update(stateful_metrics.keys())
+            metrics.update(stateful_metrics)
+
+        if "metrics" in loop_state.step_logs:
+            metrics.update(loop_state.step_logs["metrics"])
+
+        if metrics:
+            self.bar.update(
+                current,
+                values=[(k, v) for k, v in metrics.items() if is_scalar(v)],
+            )
 
 
 class wandb_logger(CallbackBase[S]):

@@ -9,10 +9,12 @@ from ciclo.api import (
     InputCallable,
     InputTasks,
     Logs,
+    LogsLike,
     LoopOutput,
     LoopState,
     Period,
     get_callback,
+    inject,
 )
 from ciclo.utils import get_batch_size
 
@@ -23,8 +25,8 @@ def loop(
     tasks: InputTasks,
     *,
     stop: Union[Period, int, None] = None,
-    on_start: Optional[List[InputCallable]] = None,
-    on_end: Optional[List[InputCallable]] = None,
+    on_start: Union[InputCallable, List[InputCallable], None] = None,
+    on_end: Union[InputCallable, List[InputCallable], None] = None,
     history: Optional[History] = None,
     elapsed: Optional[Elapsed] = None,
     catch_keyboard_interrupt: bool = True,
@@ -46,8 +48,8 @@ def loop(
         state=state,
         history=history,
         elapsed=elapsed,
-        step_logs={},
-        accumulated_logs={},
+        step_logs=Logs(),
+        accumulated_logs=Logs(),
         metadata=metadata,
     )
 
@@ -61,21 +63,23 @@ def loop(
         )
         for schedule, callbacks in tasks.items()
     ]
-
     batch = None
 
     try:
         for i, batch in enumerate(dataset):
-            logs_elapsed = loop_state.elapsed.update(get_batch_size(batch))
-            loop_state.elapsed = logs_elapsed
+            loop_state.step_logs = Logs()
+            elapsed_initial = loop_state.elapsed.update(get_batch_size(batch))
+            loop_state.elapsed = elapsed_initial
 
             # call on_start on first batch
             if i == 0 and on_start is not None:
+                if not isinstance(on_start, list):
+                    on_start = [on_start]
                 for callback in on_start:
                     callback = get_callback(callback)
                     _make_call(loop_state, callback, batch)
 
-            loop_state.step_logs = {}
+            loop_state.step_logs = Logs()
             for s, (schedule, callbacks) in enumerate(tasks_):
                 if schedule(loop_state.elapsed):
                     for callback in callbacks:
@@ -86,7 +90,7 @@ def loop(
                     break
 
             if loop_state.step_logs:
-                loop_state.step_logs["elapsed"] = logs_elapsed
+                loop_state.step_logs["elapsed"] = elapsed_initial
                 loop_state.history.append(loop_state.step_logs)
 
             if loop_state.stop_iteration or (
@@ -96,7 +100,9 @@ def loop(
 
         # call on_end on last batch
         if on_end is not None:
-            loop_state.step_logs = {}
+            loop_state.step_logs = Logs()
+            if not isinstance(on_end, list):
+                on_end = [on_end]
             for callback in on_end:
                 callback = get_callback(callback)
                 _make_call(loop_state, callback, batch)
@@ -113,14 +119,14 @@ def loop(
 def _make_call(loop_state: LoopState, callback: Callback, batch: Batch):
     try:
         loop_state.elapsed = loop_state.elapsed.update_time()
-        callback_outputs = callback(
-            loop_state.state, batch, loop_state.elapsed, loop_state
+        callback_outputs = inject(
+            callback, loop_state.state, batch, loop_state.elapsed, loop_state
         )
         if callback_outputs is not None:
             logs, state = callback_outputs
             if logs is not None:
-                loop_state.step_logs.update(logs)
-                loop_state.accumulated_logs.update(logs)
+                loop_state.step_logs.merge(logs)
+                loop_state.accumulated_logs.merge(logs)
             if state is not None:
                 loop_state.state = state
     except BaseException as e:

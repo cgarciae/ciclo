@@ -15,7 +15,7 @@ from .callbacks import (
     CallbackBase,
 )
 from .loops import loop, LoopState
-from .schedules import every
+from .schedules import every, piecewise
 from .strategies import (
     JIT,
     DataParallel,
