@@ -21,21 +21,11 @@ ds_valid: tf.data.Dataset = tfds.load("mnist", split="test")
 ds_valid = ds_valid.batch(32, drop_remainder=True).prefetch(1)
 
 # Define model
-class CNN(nn.Module):
-    """A simple CNN model."""
-
+class Linear(nn.Module):
     @nn.compact
     def __call__(self, x):
         x = x / 255.0
-        # x = nn.Conv(features=32, kernel_size=(3, 3))(x)
-        # x = nn.relu(x)
-        # x = nn.avg_pool(x, window_shape=(2, 2), strides=(2, 2))
-        # x = nn.Conv(features=64, kernel_size=(3, 3))(x)
-        # x = nn.relu(x)
-        # x = nn.avg_pool(x, window_shape=(2, 2), strides=(2, 2))
         x = x.reshape((x.shape[0], -1))  # flatten
-        # x = nn.Dense(features=256)(x)
-        # x = nn.relu(x)
         x = nn.Dense(features=10)(x)
         return x
 
@@ -91,7 +81,7 @@ def reset_metrics(state: TrainState, batch, _):
 
 
 # Initialize state
-model = CNN()
+model = Linear()
 variables = model.init(jax.random.PRNGKey(0), jnp.empty((1, 28, 28, 1)))
 state = TrainState.create(
     apply_fn=model.apply,

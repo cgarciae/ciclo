@@ -17,21 +17,11 @@ ds_train: tf.data.Dataset = tfds.load("mnist", split="train", shuffle_files=True
 ds_train = ds_train.shuffle(1024).batch(32).repeat().prefetch(1)
 
 # Define model
-class CNN(nn.Module):
-    """A simple CNN model."""
-
+class Linear(nn.Module):
     @nn.compact
     def __call__(self, x):
         x = x / 255.0
-        x = nn.Conv(features=32, kernel_size=(3, 3))(x)
-        x = nn.relu(x)
-        x = nn.avg_pool(x, window_shape=(2, 2), strides=(2, 2))
-        x = nn.Conv(features=64, kernel_size=(3, 3))(x)
-        x = nn.relu(x)
-        x = nn.avg_pool(x, window_shape=(2, 2), strides=(2, 2))
         x = x.reshape((x.shape[0], -1))  # flatten
-        x = nn.Dense(features=256)(x)
-        x = nn.relu(x)
         x = nn.Dense(features=10)(x)
         return x
 
@@ -54,7 +44,7 @@ def train_step(state: TrainState, batch):
 
 
 # Initialize state
-model = CNN()
+model = Linear()
 variables = model.init(jax.random.PRNGKey(0), jnp.empty((1, 28, 28, 1)))
 state = TrainState.create(
     apply_fn=model.apply,
@@ -80,7 +70,7 @@ state, history, *_ = ciclo.loop(
 
 # %%
 # plot the training history
-steps, loss, accuracy = history["steps", "loss", "accuracy"]
+steps, loss, accuracy = history.collect("steps", "loss", "accuracy")
 steps, loss, accuracy = np.array(steps), np.array(loss), np.array(accuracy)
 # calculate the moving average
 loss_ma = np.convolve(loss, np.ones(32) / 32, mode="valid")
