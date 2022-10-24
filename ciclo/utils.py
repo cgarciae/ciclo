@@ -1,8 +1,13 @@
-from typing import Any, Callable, Optional, TypeVar
-from ciclo.api import Batch, Callback, FunctionCallback, Period
+from typing import Any, Callable, Dict, Optional, TypeVar
+from ciclo.api import Batch, Callback, FunctionCallback, Period, Logs
 import jax
 
 F = TypeVar("F", bound=Callable[..., Any])
+
+
+def logs(**kwargs: Dict[str, Any]) -> Logs:
+    # copy internal dicts to avoid side effects
+    return Logs({k: v.copy() for k, v in kwargs.items()})
 
 
 def at(

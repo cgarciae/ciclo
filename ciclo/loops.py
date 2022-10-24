@@ -9,7 +9,6 @@ from ciclo.api import (
     InputCallable,
     InputTasks,
     Logs,
-    LogsLike,
     LoopOutput,
     LoopState,
     Period,

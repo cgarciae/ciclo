@@ -13,6 +13,7 @@ from typing import (
     Generic,
     List,
     Mapping,
+    MutableMapping,
     Optional,
     Tuple,
     TypeVar,
@@ -130,8 +131,13 @@ class ManagedStep(CallbackBase[S]):
             if logs is None:
                 return logs, state
 
-            for collection in logs.keys():
-                for key, value in logs[collection].items():
+            for collection, collection_logs in logs.items():
+                if not isinstance(collection_logs, MutableMapping):
+                    raise ValueError(
+                        f"Cannot handle collection '{collection}' of type {type(collection_logs).__name__}, "   
+                        "must be a MutableMapping"
+                    )
+                for key, value in collection_logs.items():
                     if collection == "stateful_metrics":
                         if isinstance(value, Metric):
                             metric: Metric = getattr(state, key)
@@ -140,15 +146,15 @@ class ManagedStep(CallbackBase[S]):
                             state = state.replace(**{key: metric})
                             metric_value = metric.compute()
                             if isinstance(metric_value, Mapping):
-                                logs[collection].update(metric_value)
+                                collection_logs.update(metric_value)
                             else:
-                                logs[collection][key] = metric_value
+                                collection_logs[key] = metric_value
                         else:
-                            logs[collection][key] = strategy.handle_averageable(value)
+                            collection_logs[key] = strategy.handle_averageable(value)
                     elif collection in ("losses", "metrics"):
-                        logs[collection][key] = strategy.handle_averageable(value)
+                        collection_logs[key] = strategy.handle_averageable(value)
                     else:
-                        logs[collection][key] = strategy.handle_gatherable(value)
+                        collection_logs[key] = strategy.handle_gatherable(value)
             return logs, state
 
         return lifted_postprocess

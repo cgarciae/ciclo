@@ -3,7 +3,7 @@ __version__ = "0.1.0"
 
 from . import managed
 from .api import Elapsed, Period
-from .utils import at, callback
+from .utils import at, callback, logs
 from .callbacks import (
     checkpoint,
     early_stopping,
@@ -24,4 +24,3 @@ from .strategies import (
     get_strategy,
     register_strategy,
 )
-from .logs import logs

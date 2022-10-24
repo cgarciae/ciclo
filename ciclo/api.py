@@ -1,6 +1,6 @@
-from abc import ABC, abstractmethod
 import importlib.util
 import inspect
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import (
@@ -23,6 +23,8 @@ from typing import (
 
 import jax
 from flax import struct
+from flax.core import tracers
+from jax.tree_util import register_pytree_node
 from pkbar import Kbar
 from tqdm import tqdm
 
@@ -40,7 +42,8 @@ State = Any
 Batch = Any
 Broadcasts = Any
 Statics = Any
-LogsLike = Dict[str, Dict[str, Any]]
+LogPath = Tuple[str, str]
+LogsLike = Dict[str, Mapping[str, Any]]
 InputCallable = Callable
 S = TypeVar("S", bound=State)
 B = TypeVar("B", bound=Batch)
@@ -166,14 +169,70 @@ class Period:
         return f"Period({params_repr})"
 
 
-class Logs(Dict[str, Union[Dict[str, Any], Elapsed]]):
+class Logs(LogsLike):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._trace_level = tracers.trace_level(tracers.current_trace())
+
+    # ----------------------------------
+    # logger behavior
+    # ----------------------------------
+    def add(self, collection: str, key: str, value: Any) -> "Logs":
+
+        log_trace_level = tracers.trace_level(tracers.current_trace())
+        if log_trace_level != self._trace_level:
+            raise ValueError("log must be called from the same trace level")
+
+        if collection not in self:
+            self[collection] = {}
+
+        mapping = self[collection]
+
+        if not isinstance(mapping, MutableMapping):
+            raise ValueError(
+                f"Invalid collection '{collection}' of type '{type(mapping).__name__}', must be a MutableMapping"
+            )
+
+        mapping[key] = value
+
+        return self
+
+    def add_many(self, collection: str, values: Dict[str, Any]) -> "Logs":
+
+        for key, value in values.items():
+            self.add(collection, key, value)
+
+        return self
+
+    def add_metric(self, key: str, value: Any, *, stateful: bool = False) -> "Logs":
+        if isinstance(value, Metric):
+            stateful = True
+        collection = "metrics" if not stateful else "stateful_metrics"
+        return self.add(collection, key, value)
+
+    def add_metrics(self, metrics: Dict[str, Any], *, stateful: bool = False):
+        for key, value in metrics.items():
+            self.add_metric(key, value, stateful=stateful)
+
+    def add_loss(self, key: str, value: Any, *, add_metric: bool = False):
+        self.add("losses", key, value)
+        if add_metric:
+            self.add_metric(key, value)
+
+    def add_losses(self, losses: Dict[str, Any], *, add_metrics: bool = False):
+        for key, value in losses.items():
+            self.add_loss(key, value, add_metric=add_metrics)
+
+    # ----------------------------------
+    # history behavior
+    # ----------------------------------
     def subkey_value(self, key: str) -> Any:
         path = self.subkey_path(key)
         if path is None:
             raise KeyError(f"Key {key} not found in logs.")
         return self.path_value(path)
 
-    def subkey_path(self, key: str) -> Optional[Tuple[str, str]]:
+    def subkey_path(self, key: str) -> Optional[LogPath]:
         path = key.split(".")
 
         if len(path) == 1:
@@ -201,7 +260,7 @@ class Logs(Dict[str, Union[Dict[str, Any], Elapsed]]):
                 "Use `collection.key` syntax."
             )
 
-    def path_value(self, path: Tuple[str, str]) -> Any:
+    def path_value(self, path: LogPath) -> Any:
         collection, key = path
         return self[collection][key]
 
@@ -213,25 +272,44 @@ class Logs(Dict[str, Union[Dict[str, Any], Elapsed]]):
                 )
             if name in self:
                 collection = self[name]
-                if isinstance(collection, Dict):
+                if isinstance(collection, MutableMapping):
                     collection.update(updates)
-                elif isinstance(collection, Elapsed):
-                    if not isinstance(updates, Elapsed):
+                elif isinstance(collection, Mapping):
+                    if type(collection) != type(updates):
                         raise ValueError(
-                            f"Cannot merge Elapsed with {type(updates)} for collection '{name}'"
+                            f"Cannot merge collections of different types: {type(collection)} and {type(updates)}"
                         )
                     self[name] = updates
                 else:
                     raise ValueError(
-                        f"Cannot update non-MutableMapping collection '{name}' of type '{type(collection).__name__}'"
+                        f"Invalid collection '{name}' of type '{type(collection).__name__}', must be a Mapping "
+                        "or MutableMapping"
                     )
             else:
+                # NOTE: we copy mutable mappings to avoid side effects
                 if isinstance(updates, Dict):
                     self[name] = updates.copy()
-                elif isinstance(updates, Elapsed):
-                    self[name] = updates
-                else:
+                elif isinstance(updates, MutableMapping):
                     self[name] = dict(updates)
+                else:
+                    self[name] = updates
+
+
+def _logs_tree_flatten(self):
+    return (dict(self),), self._trace_level
+
+
+def _logs_tree_unflatten(aux_data, children):
+    self = Logs(children[0])
+    self._trace_level = aux_data
+    return self
+
+
+register_pytree_node(Logs, _logs_tree_flatten, _logs_tree_unflatten)
+
+# ----------------------------------
+# history
+# ----------------------------------
 
 
 class History(List[Logs]):

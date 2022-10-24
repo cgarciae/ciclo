@@ -11,7 +11,6 @@ import tensorflow as tf
 import tensorflow_datasets as tfds
 from flax.training.train_state import TrainState
 import numpy as np
-from ciclo import auto
 
 # load the MNIST dataset
 ds_train: tf.data.Dataset = tfds.load("mnist", split="train", shuffle_files=True)

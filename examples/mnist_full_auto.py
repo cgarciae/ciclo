@@ -13,7 +13,6 @@ import tensorflow_datasets as tfds
 from clu.metrics import Accuracy, Average, Collection
 from flax import struct
 from flax.training import train_state
-from ciclo import auto
 
 # load the MNIST dataset
 ds_train: tf.data.Dataset = tfds.load("mnist", split="train", shuffle_files=True)
@@ -62,8 +61,8 @@ def train_step(state: TrainState, batch):
 
 @jax.jit
 def compute_metrics(state: TrainState):
-    logs = ciclo.logs(stateful_metrics=state.metrics.compute())
-    return logs, state
+    logs = state.metrics.compute()
+    return {"stateful_metrics": logs}, state
 
 
 @jax.jit
