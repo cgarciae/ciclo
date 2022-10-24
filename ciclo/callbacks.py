@@ -9,7 +9,6 @@ import os
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum, auto
-from importlib import util as importlib_util
 from typing import Any, Callable, Dict, Optional, Tuple, Union, overload
 
 from flax.training import checkpoints as flax_checkpoints
@@ -439,7 +438,7 @@ noop = NoOp()
 # Adapters
 # -------------------------------------------
 
-if importlib_util.find_spec("clu") is not None:
+if importlib.util.find_spec("clu") is not None:
     from clu.periodic_actions import PeriodicAction
 
     @dataclass(frozen=True)

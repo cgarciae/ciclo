@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, is_dataclass, replace
 from functools import partial
-from importlib import util as importlib_util
+import importlib.util
 from typing import (
     Any,
     Callable,
@@ -20,12 +20,7 @@ from einop import einop
 from flax import jax_utils
 from flax.training import train_state
 from typing_extensions import Protocol, runtime_checkable
-from ciclo.api import GeneralCallback, LogsLike
-
-if importlib_util.find_spec("clu"):
-    from clu.metrics import Metric
-else:
-    locals()["Metric"] = type("Metric", (), {})
+from ciclo.api import GeneralCallback, LogsLike, Metric
 
 
 class Dataclass(Protocol):
@@ -152,14 +147,11 @@ class Strategy(ABC):
     def lift_batch_size(self, batch_size: int) -> int:
         return batch_size
 
-    def lower_outputs(self, outputs: A) -> A:
+    def handle_gatherable(self, outputs: A) -> A:
         return outputs
 
-    def handle_metrics(
-        self,
-        metrics: ME,
-    ) -> ME:
-        return metrics
+    def handle_metric(self, metric: ME) -> ME:
+        return metric
 
     def handle_grads(
         self,
@@ -173,11 +165,8 @@ class Strategy(ABC):
     ) -> Any:
         return batch_stats
 
-    def handle_logs(
-        self,
-        logs: LogsLike,
-    ) -> LogsLike:
-        return logs
+    def handle_averageable(self, x: A) -> A:
+        return x
 
     @abstractmethod
     def __call__(self, callback: GeneralCallback) -> GeneralCallback:
@@ -208,10 +197,12 @@ class DataParallel(Strategy):
     donate_args: bool = False
 
     def from_host(self, state: S) -> S:
+        key = state.key if isinstance(state, HasKey) else None
         state = jax_utils.replicate(state)
-        if isinstance(state, HasKey):
-            key = jax.random.split(state.key, jax.local_device_count())
-            key = jax_utils.replicate(key)
+        if key is not None:
+            devices = jax_utils._pmap_device_order()
+            key = jax.random.split(key, jax.local_device_count())
+            key = jax.device_put_sharded(list(key), devices)
             state = replace(state, key=key)
         return state
 
@@ -229,12 +220,9 @@ class DataParallel(Strategy):
         )
         return data
 
-    def lower_outputs(self, outputs: A) -> A:
-        outputs = jax.tree_map(
-            lambda x: einop(x, "device batch ... -> (device batch) ..."),
-            outputs,
-        )
-        return outputs
+    def handle_gatherable(self, x: A) -> A:
+        x = jax.lax.all_gather(x, axis_name=self.axis_name, tiled=True)
+        return x
 
     def lift_key(self, key: jax.random.PRNGKeyArray) -> jax.random.PRNGKeyArray:
         return jax.random.split(key, jax.local_device_count())
@@ -242,14 +230,14 @@ class DataParallel(Strategy):
     def lift_batch_size(self, batch_size: int) -> int:
         return batch_size * jax.local_device_count()
 
-    def handle_metrics(
+    def handle_metric(
         self,
-        metrics: ME,
+        metric: ME,
     ) -> ME:
         # metrics = jax.lax.stop_gradient(metrics)
-        metrics = jax.lax.all_gather(metrics, axis_name=self.axis_name)
-        metrics = metrics.reduce()
-        return metrics
+        metric = jax.lax.all_gather(metric, axis_name=self.axis_name)
+        metric = metric.reduce()
+        return metric
 
     def handle_grads(self, grads: A) -> A:
         return jax.lax.pmean(grads, axis_name=self.axis_name)
@@ -257,8 +245,8 @@ class DataParallel(Strategy):
     def handle_batch_stats(self, batch_stats: A) -> A:
         return jax.lax.pmean(batch_stats, axis_name=self.axis_name)
 
-    def handle_logs(self, logs: LogsLike) -> LogsLike:
-        return jax.lax.pmean(logs, axis_name=self.axis_name)
+    def handle_averageable(self, x: A) -> A:
+        return jax.lax.pmean(x, axis_name=self.axis_name)
 
     def __call__(self, callback: GeneralCallback) -> GeneralCallback:
         return jax.pmap(

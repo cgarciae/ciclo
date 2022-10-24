@@ -14,7 +14,7 @@ import numpy as np
 
 # load the MNIST dataset
 ds_train: tf.data.Dataset = tfds.load("mnist", split="train", shuffle_files=True)
-ds_train = ds_train.shuffle(1024).batch(32).repeat().prefetch(1)
+ds_train = ds_train.repeat().shuffle(1024).batch(32).prefetch(1)
 
 # Define model
 class Linear(nn.Module):
@@ -39,7 +39,10 @@ def train_step(state: TrainState, batch):
 
     (loss, logits), grads = jax.value_and_grad(loss_fn, has_aux=True)(state.params)
     state = state.apply_gradients(grads=grads)
-    logs = {"loss": loss, "accuracy": jnp.mean(jnp.argmax(logits, -1) == labels)}
+    logs = {
+        "loss": loss,
+        "accuracy": jnp.mean(jnp.argmax(logits, -1) == labels),
+    }
     return {"metrics": logs}, state
 
 

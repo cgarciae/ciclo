@@ -1,3 +1,4 @@
+from curses import keyname
 from time import time
 import ciclo
 import flax.linen as nn
@@ -9,13 +10,16 @@ import tensorflow_datasets as tfds
 from ciclo import managed
 from clu.metrics import Accuracy, Average
 
-batch_size = 32 * 8
+print(jax.local_devices())
+
+strategy = ciclo.get_strategy("data_parallel")
+batch_size = strategy.lift_batch_size(32)
 
 # load the MNIST dataset
 ds_train: tf.data.Dataset = tfds.load("mnist", split="train", shuffle_files=True)
-ds_train = ds_train.shuffle(1024).batch(batch_size).repeat().prefetch(1)
+ds_train = ds_train.repeat().shuffle(1024).batch(batch_size).prefetch(1)
 ds_valid: tf.data.Dataset = tfds.load("mnist", split="test")
-ds_valid = ds_valid.batch(32, drop_remainder=True).prefetch(1)
+ds_valid = ds_valid.batch(batch_size, drop_remainder=True).prefetch(1)
 
 # Define model
 class Linear(nn.Module):
@@ -33,28 +37,30 @@ AverageLoss = Average.from_output("loss")
 class ManagedState(managed.ManagedState):
     accuracy: Accuracy
     loss: AverageLoss
+    key: jax.random.KeyArray
 
 
-def loss_fn(state: ManagedState, batch, _):
+def loss_fn(state: ManagedState, batch):
     inputs, labels = batch["image"], batch["label"]
-
     logits = state.apply_fn({"params": state.params}, inputs)
     loss = optax.softmax_cross_entropy_with_integer_labels(
         logits=logits, labels=labels
     ).mean()
-
-    managed.log("accuracy", Accuracy.from_model_output(logits=logits, labels=labels))
-    managed.log("loss", AverageLoss.from_model_output(loss=loss))
-
-    return loss, state
+    logs = ciclo.logs()
+    logs.add_loss("loss", loss)
+    logs.add_metric(
+        "accuracy", Accuracy.from_model_output(logits=logits, labels=labels)
+    )
+    logs.add_metric("loss", AverageLoss.from_model_output(loss=loss))
+    return logs, state
 
 
 train_step = managed.train_step(loss_fn)
-eval_step = managed.eval_step(loss_fn)
+eval_step = managed.step(loss_fn)
 
 
 @managed.step
-def reset_metrics(state: ManagedState, batch, _):
+def reset_metrics(state: ManagedState):
     return None, state.replace(
         accuracy=Accuracy.empty(),
         loss=AverageLoss.empty(),
@@ -70,7 +76,8 @@ state = ManagedState.create(
     tx=optax.adamw(1e-3),
     accuracy=Accuracy.empty(),
     loss=AverageLoss.empty(),
-    strategy="jit",
+    key=jax.random.PRNGKey(0),
+    strategy=strategy,
 )
 
 # training loop
@@ -82,7 +89,7 @@ state, history, *_ = ciclo.loop(
     state,
     ds_train.as_numpy_iterator(),
     {
-        ciclo.every(steps=1): train_step,
+        **train_step,
         ciclo.every(eval_steps, steps_offset=1): [
             reset_metrics,
             ciclo.inner_loop(
@@ -106,9 +113,7 @@ state, history, *_ = ciclo.loop(
             ),
             reset_metrics,
         ],
-        ciclo.every(steps=1): ciclo.keras_bar(
-            total=ciclo.at(steps=total_steps), always_stateful=True
-        ),
+        **ciclo.keras_bar(total=total_steps),
     },
-    stop=ciclo.at(steps=total_steps),
+    stop=ciclo.at(samples=total_samples),
 )

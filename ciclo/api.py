@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-import functools
+import importlib.util
 import inspect
 from dataclasses import dataclass
 from datetime import datetime, timedelta
@@ -22,11 +22,16 @@ from typing import (
 )
 
 import jax
-from flax.struct import PyTreeNode
+from flax import struct
 from pkbar import Kbar
 from tqdm import tqdm
 
 import ciclo
+
+if importlib.util.find_spec("clu"):
+    from clu.metrics import Metric
+else:
+    locals()["Metric"] = type("Metric", (), {})
 
 # ---------------------------------------
 # types
@@ -35,7 +40,7 @@ State = Any
 Batch = Any
 Broadcasts = Any
 Statics = Any
-LogsLike = Dict[str, Mapping[str, Any]]
+LogsLike = Dict[str, Dict[str, Any]]
 InputCallable = Callable
 S = TypeVar("S", bound=State)
 B = TypeVar("B", bound=Batch)
@@ -49,11 +54,11 @@ ScheduleCallback = Dict[Schedule, List[Callback]]
 CallbackAdapter = Callable[[Any], Callback]
 
 
-class Elapsed(PyTreeNode, Mapping[str, Any]):
+class Elapsed(struct.PyTreeNode, Mapping[str, Any]):
     steps: int
     samples: int
     date: float
-    _date_start: float
+    _date_start: float = struct.field(pytree_node=True, repr=False)
 
     @property
     def time(self) -> float:
