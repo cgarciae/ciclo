@@ -11,6 +11,7 @@ import tensorflow as tf
 import tensorflow_datasets as tfds
 from flax.training.train_state import TrainState
 import numpy as np
+from ciclo import auto
 
 # load the MNIST dataset
 ds_train: tf.data.Dataset = tfds.load("mnist", split="train", shuffle_files=True)
@@ -39,8 +40,10 @@ def train_step(state: TrainState, batch):
 
     (loss, logits), grads = jax.value_and_grad(loss_fn, has_aux=True)(state.params)
     state = state.apply_gradients(grads=grads)
-    logs = {"loss": loss, "accuracy": jnp.mean(jnp.argmax(logits, -1) == labels)}
-    return {"metrics": logs}, state
+    logs = ciclo.logs()
+    logs.add_metric("loss", loss)
+    logs.add_metric("accuracy", jnp.mean(jnp.argmax(logits, -1) == labels))
+    return logs, state
 
 
 # Initialize state

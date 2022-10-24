@@ -24,3 +24,4 @@ from .strategies import (
     get_strategy,
     register_strategy,
 )
+from .logs import logs

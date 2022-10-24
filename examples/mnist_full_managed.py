@@ -19,7 +19,6 @@ ds_valid = ds_valid.batch(32, drop_remainder=True).prefetch(1)
 
 # Define model
 class Linear(nn.Module):
-
     @nn.compact
     def __call__(self, x):
         x = x / 255.0
