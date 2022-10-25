@@ -7,10 +7,10 @@ import tensorflow as tf
 import tensorflow_datasets as tfds
 from ciclo import managed
 
-# load the MNIST dataset
 strategy = ciclo.get_strategy("data_parallel")
 batch_size = strategy.lift_batch_size(32)
 
+# load the MNIST dataset
 ds_train: tf.data.Dataset = tfds.load("mnist", split="train", shuffle_files=True)
 ds_train = ds_train.repeat().shuffle(1024).batch(batch_size).prefetch(1)
 
@@ -45,11 +45,12 @@ def train_step(state: managed.ManagedState, batch):
     logs = ciclo.logs()
     logs.add_loss("loss", loss, add_metric=True)
     logs.add_metric("accuracy", jnp.mean(jnp.argmax(logits, -1) == labels))
+    logs.add_output("logits", logits)
     return logs, state
 
 
 # Training loop
-total_samples = 32 * 10_000
+total_samples = 32 * 1_000
 total_steps = total_samples // batch_size
 
 state, history, _ = ciclo.loop(
@@ -63,3 +64,5 @@ state, history, _ = ciclo.loop(
     },
     stop=ciclo.at(samples=total_samples),
 )
+
+print(history[0].subkey_value("logits").shape)

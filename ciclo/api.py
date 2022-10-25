@@ -223,6 +223,10 @@ class Logs(LogsLike):
         for key, value in losses.items():
             self.add_loss(key, value, add_metric=add_metrics)
 
+    def add_output(self, key: str, value: Any, *, per_sample: bool = True):
+        collection = "per_sample_outputs" if per_sample else "outputs"
+        self.add(collection, key, value)
+
     # ----------------------------------
     # history behavior
     # ----------------------------------

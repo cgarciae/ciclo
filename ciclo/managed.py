@@ -113,7 +113,28 @@ class ManagedStep(CallbackBase[S]):
         callback = self.strategy_callbacks[strategy]
 
         batch = strategy.lift_batch(batch)
-        return callback(state, batch, broadcasts, statics)
+        callback_output = callback(state, batch, broadcasts, statics)
+
+        if callback_output is None:
+            return
+
+        logs = callback_output[0]
+        state = callback_output[1] if callback_output[1] is not None else state
+
+        if logs is None:
+            return logs, state
+
+        for collection in logs.keys():
+            if collection == "stateful_metrics":
+                logs[collection] = strategy.lower_replicated(logs[collection])
+            elif collection in ("losses", "metrics"):
+                logs[collection] = strategy.lower_averageable(logs[collection])
+            elif collection == "per_sample_outputs":
+                logs[collection] = strategy.lower_tileable(logs[collection])
+            else:
+                logs[collection] = strategy.lower_sharded(logs[collection])
+
+        return logs, state
 
     def get_callback(self, strategy: Strategy) -> GeneralCallback:
         def lifted_postprocess(
@@ -126,35 +147,25 @@ class ManagedStep(CallbackBase[S]):
                 return
 
             logs = step_output[0]
-            state = step_output[1] if step_output[1] is not None else state
+            state = step_output[1] or state
 
             if logs is None:
                 return logs, state
 
-            for collection, collection_logs in logs.items():
-                if not isinstance(collection_logs, MutableMapping):
-                    raise ValueError(
-                        f"Cannot handle collection '{collection}' of type {type(collection_logs).__name__}, "   
-                        "must be a MutableMapping"
-                    )
-                for key, value in collection_logs.items():
-                    if collection == "stateful_metrics":
-                        if isinstance(value, Metric):
-                            metric: Metric = getattr(state, key)
-                            value = strategy.handle_metric(value)
-                            metric = metric.merge(value)
-                            state = state.replace(**{key: metric})
-                            metric_value = metric.compute()
-                            if isinstance(metric_value, Mapping):
-                                collection_logs.update(metric_value)
-                            else:
-                                collection_logs[key] = metric_value
+            if "stateful_metrics" in logs:
+                stateful_metrics = logs["stateful_metrics"]
+                assert isinstance(stateful_metrics, MutableMapping)
+                for key, value in stateful_metrics.items():
+                    if isinstance(value, Metric):
+                        metric: Metric = getattr(state, key)
+                        value = strategy.handle_metric(value)
+                        metric = metric.merge(value)
+                        state = state.replace(**{key: metric})
+                        metric_value = metric.compute()
+                        if isinstance(metric_value, Mapping):
+                            stateful_metrics.update(metric_value)
                         else:
-                            collection_logs[key] = strategy.handle_averageable(value)
-                    elif collection in ("losses", "metrics"):
-                        collection_logs[key] = strategy.handle_averageable(value)
-                    else:
-                        collection_logs[key] = strategy.handle_gatherable(value)
+                            stateful_metrics[key] = metric_value
             return logs, state
 
         return lifted_postprocess

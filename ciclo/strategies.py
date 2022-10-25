@@ -29,7 +29,7 @@ class Dataclass(Protocol):
 
 @runtime_checkable
 class HasKey(Protocol):
-    key: jax.random.PRNGKeyArray
+    key: jax.random.KeyArray
 
 
 StrategyConstructor = Callable[[], "Strategy"]
@@ -141,14 +141,11 @@ class Strategy(ABC):
     def lift_batch(self, data: A) -> A:
         return data
 
-    def lift_key(self, key: jax.random.PRNGKeyArray) -> jax.random.PRNGKeyArray:
+    def lift_key(self, key: jax.random.KeyArray) -> jax.random.KeyArray:
         return key
 
     def lift_batch_size(self, batch_size: int) -> int:
         return batch_size
-
-    def handle_gatherable(self, outputs: A) -> A:
-        return outputs
 
     def handle_metric(self, metric: ME) -> ME:
         return metric
@@ -165,8 +162,17 @@ class Strategy(ABC):
     ) -> Any:
         return batch_stats
 
-    def handle_averageable(self, x: A) -> A:
-        return x
+    def lower_tileable(self, logs: A) -> A:
+        return logs
+
+    def lower_sharded(self, logs: A) -> A:
+        return logs
+
+    def lower_averageable(self, logs: A) -> A:
+        return logs
+
+    def lower_replicated(self, logs: A) -> A:
+        return logs
 
     @abstractmethod
     def __call__(self, callback: GeneralCallback) -> GeneralCallback:
@@ -220,11 +226,7 @@ class DataParallel(Strategy):
         )
         return data
 
-    def handle_gatherable(self, x: A) -> A:
-        x = jax.lax.all_gather(x, axis_name=self.axis_name, tiled=True)
-        return x
-
-    def lift_key(self, key: jax.random.PRNGKeyArray) -> jax.random.PRNGKeyArray:
+    def lift_key(self, key: jax.random.KeyArray) -> jax.random.KeyArray:
         return jax.random.split(key, jax.local_device_count())
 
     def lift_batch_size(self, batch_size: int) -> int:
@@ -245,8 +247,19 @@ class DataParallel(Strategy):
     def handle_batch_stats(self, batch_stats: A) -> A:
         return jax.lax.pmean(batch_stats, axis_name=self.axis_name)
 
-    def handle_averageable(self, x: A) -> A:
-        return jax.lax.pmean(x, axis_name=self.axis_name)
+    def lower_averageable(self, logs: A) -> A:
+        return jax.tree_util.tree_map(lambda x: jnp.mean(x, axis=0), logs)
+
+    def lower_tileable(self, logs: A) -> A:
+        return jax.tree_util.tree_map(
+            lambda x: einop(x, "device batch ... -> (device batch) ..."), logs
+        )
+
+    def lower_sharded(self, logs: A) -> A:
+        return jax.device_get(logs)
+
+    def lower_replicated(self, logs: A) -> A:
+        return jax.tree_util.tree_map(lambda x: x[0], logs)
 
     def __call__(self, callback: GeneralCallback) -> GeneralCallback:
         return jax.pmap(
@@ -254,6 +267,6 @@ class DataParallel(Strategy):
             axis_name=self.axis_name,
             donate_argnums=0 if self.donate_args else (),
             in_axes=(0, 0, None, None),
-            out_axes=(None, 0),
+            out_axes=(0, 0),
             static_broadcasted_argnums=3,
         )
