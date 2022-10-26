@@ -12,7 +12,7 @@ from .callbacks import (
     tqdm_bar,
     wandb_logger,
     noop,
-    CallbackBase,
+    LoopCallbackBase,
 )
 from .loops import loop, LoopState
 from .schedules import every, piecewise

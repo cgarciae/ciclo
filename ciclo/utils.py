@@ -1,5 +1,13 @@
 from typing import Any, Callable, Dict, Iterable, Optional, Tuple, TypeVar
-from ciclo.api import Batch, Callback, Elapsed, FunctionCallback, Period, Logs, B
+from ciclo.api import (
+    Batch,
+    LoopCallback,
+    Elapsed,
+    LoopFunctionCallback,
+    Period,
+    Logs,
+    B,
+)
 import jax
 
 F = TypeVar("F", bound=Callable[..., Any])
@@ -40,8 +48,8 @@ def is_scalar(x):
         return False
 
 
-def callback(f) -> FunctionCallback:
-    return FunctionCallback(f)
+def callback(f) -> LoopFunctionCallback:
+    return LoopFunctionCallback(f)
 
 
 def elapse(

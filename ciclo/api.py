@@ -20,6 +20,7 @@ from typing import (
     Union,
     overload,
 )
+from typing_extensions import Protocol, runtime_checkable
 
 import jax
 from flax import struct
@@ -44,17 +45,26 @@ Broadcasts = Any
 Statics = Any
 LogPath = Tuple[str, str]
 LogsLike = Dict[str, Mapping[str, Any]]
-InputCallable = Callable
+InputCallback = Any
+A = TypeVar("A")
 S = TypeVar("S", bound=State)
 B = TypeVar("B", bound=Batch)
-
 Schedule = Callable[["Elapsed"], bool]
-CallbackOutput = Optional[Tuple[Optional[LogsLike], Optional[S]]]
-Callback = Callable[[S, Batch, "Elapsed", "LoopState"], CallbackOutput[S]]
+CallbackOutput = Tuple[LogsLike, S]
+
+
+@runtime_checkable
+class LoopCallback(Protocol, Generic[S]):
+    def loop_callback(
+        self, batch: Batch, loop_state: "LoopState[S]"
+    ) -> CallbackOutput[S]:
+        ...
+
+
 GeneralCallback = Callable[[S, Batch, Broadcasts, Statics], CallbackOutput[S]]
-InputTasks = Dict[Schedule, Union[InputCallable, List[InputCallable]]]
-ScheduleCallback = Dict[Schedule, List[Callback]]
-CallbackAdapter = Callable[[Any], Callback]
+InputTasks = Dict[Schedule, Union[InputCallback, List[InputCallback]]]
+ScheduleCallback = Dict[Schedule, List[LoopCallback[S]]]
+CallbackAdapter = Callable[[Any], LoopCallback[S]]
 
 
 class Elapsed(struct.PyTreeNode, Mapping[str, Any]):
@@ -354,31 +364,45 @@ class LoopState(Generic[S]):
 LoopOutput = Tuple[S, History, Elapsed]
 
 
-class CallbackBase(ABC, Generic[S]):
+class LoopCallbackBase(LoopCallback[S]):
     def keys(self) -> List[Schedule]:
         return [ciclo.every(1)]
 
-    def __getitem__(self, key: Schedule) -> List[Callback]:
+    def __getitem__(self, key: Schedule) -> List[LoopCallback[S]]:
         return [self]
 
     @abstractmethod
-    def __call__(
-        self, *args, **kwargs
-    ) -> Optional[Tuple[Optional[LogsLike], Optional[S]]]:
+    def loop_callback(
+        self, batch: Batch, loop_state: "LoopState[S]"
+    ) -> CallbackOutput[S]:
         ...
 
 
+FunctionCallbackOutputs = Optional[Tuple[Optional[LogsLike], Optional[S]]]
+
+
 @dataclass(frozen=True)
-class FunctionCallback(CallbackBase[S]):
-    f: Callable
+class LoopFunctionCallback(LoopCallbackBase[S]):
+    f: Callable[..., FunctionCallbackOutputs[S]]
 
-    def __call__(self, state: S, batch, broadcasts, statics) -> CallbackOutput[S]:
-        return inject(self.f, state, batch, broadcasts, statics)
+    def loop_callback(
+        self, batch: Batch, loop_state: "LoopState[S]"
+    ) -> CallbackOutput[S]:
+        outputs = inject(
+            self.f, loop_state.state, batch, loop_state.elapsed, loop_state
+        )
+
+        if outputs is None:
+            return {}, loop_state.state
+
+        logs = outputs[0] or {}
+        state = outputs[1] or loop_state.state
+
+        return logs, state
 
 
-def inject(f, state: S, batch, broadcasts, statics) -> CallbackOutput[S]:
+def inject(f: Callable[..., A], *args) -> A:
     n_args = len(inspect.getfullargspec(f).args)
-    args = (state, batch, broadcasts, statics)
     return f(*args[:n_args])
 
 
@@ -395,7 +419,7 @@ def register_adapter(adapter: CallbackAdapter, cls: Type):
     _REGISTRY[cls] = adapter
 
 
-def _get_adapter(cls: Type) -> Optional[CallbackAdapter]:
+def get_adapter(cls: Type) -> Optional[CallbackAdapter]:
     super_classes = inspect.getmro(cls)
     for super_class in super_classes:
         if super_class in _REGISTRY:
@@ -403,14 +427,14 @@ def _get_adapter(cls: Type) -> Optional[CallbackAdapter]:
     return None
 
 
-def get_callback(f: Any) -> Callback:
-    adaper = _get_adapter(type(f))
+def get_loop_callback(f: Any) -> LoopCallback:
+    adaper = get_adapter(type(f))
 
     if adaper is not None:
         return adaper(f)
-    elif isinstance(f, CallbackBase):
+    elif isinstance(f, LoopCallbackBase):
         return f
     elif callable(f):
-        return f
+        return LoopFunctionCallback(f)
     else:
         raise ValueError(f"Invalid callback: {f}")

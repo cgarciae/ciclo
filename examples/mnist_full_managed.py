@@ -12,7 +12,7 @@ from clu.metrics import Accuracy, Average
 
 print(jax.local_devices())
 
-strategy = ciclo.get_strategy("data_parallel")
+strategy = ciclo.get_strategy("jit")
 batch_size = strategy.lift_batch_size(32)
 
 # load the MNIST dataset
@@ -81,7 +81,7 @@ state = ManagedState.create(
 )
 
 # training loop
-total_samples = 32 * 10 * 10_000
+total_samples = 32 * 10_000
 total_steps = total_samples // batch_size
 eval_steps = total_steps // 10
 

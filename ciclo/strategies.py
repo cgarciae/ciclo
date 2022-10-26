@@ -163,16 +163,16 @@ class Strategy(ABC):
         return batch_stats
 
     def lower_tileable(self, logs: A) -> A:
-        return logs
+        return jax.device_get(logs)
 
     def lower_sharded(self, logs: A) -> A:
-        return logs
+        return jax.device_get(logs)
 
     def lower_averageable(self, logs: A) -> A:
-        return logs
+        return jax.device_get(logs)
 
     def lower_replicated(self, logs: A) -> A:
-        return logs
+        return jax.device_get(logs)
 
     @abstractmethod
     def __call__(self, callback: GeneralCallback) -> GeneralCallback:

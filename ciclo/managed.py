@@ -27,8 +27,8 @@ from flax.training import train_state
 from typing_extensions import Protocol, runtime_checkable
 from ciclo.api import (
     Broadcasts,
-    Callback,
-    CallbackBase,
+    LoopCallback,
+    LoopCallbackBase,
     CallbackOutput,
     Elapsed,
     LogsLike,
@@ -38,9 +38,11 @@ from ciclo.api import (
     register_adapter,
     Batch,
     Metric,
+    LoopState,
+    FunctionCallbackOutputs,
 )
 
-from ciclo.strategies import GeneralCallback, Strategy, get_strategy
+from ciclo.strategies import Strategy, get_strategy
 
 
 @runtime_checkable
@@ -56,9 +58,33 @@ class HasBatchStats(Protocol):
 Loss = jax.Array
 
 S = TypeVar("S", bound="ManagedState")
-L = TypeVar("L", bound="LossFn")
 A = TypeVar("A")
 B = TypeVar("B")
+
+ManagedCallbackCallable = Callable[[Batch, S, Broadcasts, Statics], CallbackOutput[S]]
+
+
+@runtime_checkable
+class ManagedCallback(Protocol, Generic[S]):
+    def managed_callback(
+        self, state: S, batch: Batch, broadcast: Broadcasts, statics: Statics
+    ) -> CallbackOutput[S]:
+        ...
+
+
+@dataclass(frozen=True)
+class ManagedFunctionCallback(ManagedCallback[S]):
+    f: Callable[..., FunctionCallbackOutputs[S]]
+
+    def managed_callback(
+        self, state: S, batch: Batch, broadcast: Broadcasts, statics: Statics
+    ) -> CallbackOutput[S]:
+        outputs = inject(self.f, state, batch, broadcast, statics)
+        if outputs is None:
+            return {}, state
+        logs = outputs[0] or {}
+        state = outputs[1] or state
+        return logs, state
 
 
 class ManagedState(train_state.TrainState):
@@ -92,10 +118,10 @@ class ManagedState(train_state.TrainState):
 
 
 @dataclass
-class ManagedStep(CallbackBase[S]):
-    strategy_callbacks: Dict[Strategy, GeneralCallback[S]]
+class ManagedStep(LoopCallbackBase[S]):
+    strategy_callbacks: Dict[Strategy, ManagedCallbackCallable[S]]
     default_strategy: Strategy
-    step_fn: GeneralCallback[S]
+    step_fn: ManagedCallback[S]
 
     def __call__(
         self, state: S, batch: Batch, broadcasts: Broadcasts, statics: Statics
@@ -108,21 +134,14 @@ class ManagedStep(CallbackBase[S]):
             strategy = self.default_strategy
 
         if strategy not in self.strategy_callbacks:
-            self.strategy_callbacks[strategy] = strategy(self.get_callback(strategy))
+            self.strategy_callbacks[strategy] = strategy(
+                self.get_postprocessed_callback(strategy)
+            )
 
         callback = self.strategy_callbacks[strategy]
 
         batch = strategy.lift_batch(batch)
-        callback_output = callback(state, batch, broadcasts, statics)
-
-        if callback_output is None:
-            return
-
-        logs = callback_output[0]
-        state = callback_output[1] if callback_output[1] is not None else state
-
-        if logs is None:
-            return logs, state
+        logs, state = callback(state, batch, broadcasts, statics)
 
         for collection in logs.keys():
             if collection == "stateful_metrics":
@@ -136,21 +155,14 @@ class ManagedStep(CallbackBase[S]):
 
         return logs, state
 
-    def get_callback(self, strategy: Strategy) -> GeneralCallback:
+    def get_postprocessed_callback(
+        self, strategy: Strategy
+    ) -> ManagedCallbackCallable[S]:
         def lifted_postprocess(
             state: S, batch: Batch, broadcasts: Broadcasts, statics: Statics
         ) -> CallbackOutput[S]:
-            step_fn = self.step_callback(strategy)
-            step_output = step_fn(state, batch, broadcasts, statics)
-
-            if step_output is None:
-                return
-
-            logs = step_output[0]
-            state = step_output[1] or state
-
-            if logs is None:
-                return logs, state
+            step_fn = self.get_step_callback(strategy)
+            logs, state = step_fn(state, batch, broadcasts, statics)
 
             if "stateful_metrics" in logs:
                 stateful_metrics = logs["stateful_metrics"]
@@ -170,43 +182,31 @@ class ManagedStep(CallbackBase[S]):
 
         return lifted_postprocess
 
-    def step_callback(self, strategy: Strategy) -> GeneralCallback:
-        def regular_step_callback(
-            state: S, batch: Batch, broadcasts: Broadcasts, statics: Statics
-        ) -> CallbackOutput[S]:
-            return inject(self.step_fn, state, batch, broadcasts, statics)
+    def get_step_callback(self, strategy: Strategy) -> ManagedCallbackCallable[S]:
+        return self.step_fn.managed_callback
 
-        return regular_step_callback
+    def loop_callback(
+        self, batch: Batch, loop_state: "LoopState[S]"
+    ) -> CallbackOutput[S]:
+        logs, state = self(loop_state.state, batch, loop_state.elapsed, None)
+        return logs, state
 
 
 @dataclass
 class ManagedTrainStep(ManagedStep[S]):
-    def step_callback(self, strategy: Strategy) -> GeneralCallback[S]:
+    def get_step_callback(self, strategy: Strategy) -> ManagedCallbackCallable[S]:
         def train_step_callback(
             state: S, batch: Batch, broadcasts: Broadcasts, statics: Statics
         ) -> CallbackOutput[S]:
             def loss_fn(params):
                 _state = state.replace(params=params)
-                step_output = inject(self.step_fn, _state, batch, broadcasts, statics)
-
-                if step_output is None:
-                    raise ValueError(
-                        "callback must return a (logs, state), but got None"
-                    )
-
-                logs = step_output[0]
-                _state = step_output[1] if step_output[1] is not None else _state
-
-                if logs is None:
-                    raise ValueError(
-                        "callback must return a logs dictionary, but got None"
-                    )
-
+                logs, _state = self.step_fn.managed_callback(
+                    _state, batch, broadcasts, statics
+                )
                 if "losses" not in logs:
                     raise ValueError(
                         f"callback must return dictorionary with a 'losses' key, but got {logs.keys()}"
                     )
-
                 if len(logs["losses"]) == 0:
                     raise ValueError(
                         "'losses' collection is empty, you must provide at least one entry "
@@ -223,6 +223,7 @@ class ManagedTrainStep(ManagedStep[S]):
 
                 return loss, (logs, _state)
 
+            logs: LogsLike
             (_, (logs, state)), grads = jax.value_and_grad(loss_fn, has_aux=True)(
                 state.params
             )
@@ -246,7 +247,7 @@ def train_step(
     return ManagedTrainStep(
         strategy_callbacks={},
         default_strategy=strategy,
-        step_fn=step_fn,
+        step_fn=ManagedFunctionCallback(step_fn),
     )
 
 
@@ -256,16 +257,7 @@ def step(
 ) -> ManagedStep[S]:
     strategy = get_strategy(strategy) if isinstance(strategy, str) else strategy
     return ManagedStep(
-        step_fn=step_fn,
         strategy_callbacks={},
         default_strategy=strategy,
+        step_fn=ManagedFunctionCallback(step_fn),
     )
-
-
-@partial(register_adapter, cls=ManagedStep)
-def managed_adapter(f: ManagedStep):
-    @functools.wraps(f)
-    def callback(state: State, batch: Batch, elapsed: Elapsed, loop: Any):
-        return f(state, batch, elapsed, None)
-
-    return callback

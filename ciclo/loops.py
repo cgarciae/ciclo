@@ -4,16 +4,16 @@ from ciclo.api import (
     S,
     B,
     Batch,
-    Callback,
+    LoopCallback,
     Elapsed,
     History,
-    InputCallable,
+    InputCallback,
     InputTasks,
     Logs,
     LoopOutput,
     LoopState,
     Period,
-    get_callback,
+    get_loop_callback,
     inject,
 )
 from ciclo.utils import get_batch_size, elapse
@@ -25,8 +25,8 @@ def loop(
     tasks: InputTasks,
     *,
     stop: Union[Period, int, None] = None,
-    on_start: Union[InputCallable, List[InputCallable], None] = None,
-    on_end: Union[InputCallable, List[InputCallable], None] = None,
+    on_start: Union[InputCallback, List[InputCallback], None] = None,
+    on_end: Union[InputCallback, List[InputCallback], None] = None,
     history: Optional[History] = None,
     elapsed: Optional[Elapsed] = None,
     catch_keyboard_interrupt: bool = True,
@@ -64,7 +64,7 @@ def loop(
         (
             schedule,
             [
-                get_callback(f)
+                get_loop_callback(f)
                 for f in (callbacks if isinstance(callbacks, list) else [callbacks])
             ],
         )
@@ -81,7 +81,7 @@ def loop(
             if i == 0:
                 loop_state.step_logs = Logs()
                 for callback in on_start:
-                    callback = get_callback(callback)
+                    callback = get_loop_callback(callback)
                     _make_call(loop_state, callback, batch)
 
             loop_state.step_logs = Logs()
@@ -106,7 +106,7 @@ def loop(
         # call on_end on last batch
         loop_state.step_logs = Logs()
         for callback in on_end:
-            callback = get_callback(callback)
+            callback = get_loop_callback(callback)
             _make_call(loop_state, callback, batch)
 
     except KeyboardInterrupt:
@@ -118,18 +118,12 @@ def loop(
     return loop_state.state, loop_state.history, loop_state.elapsed
 
 
-def _make_call(loop_state: LoopState, callback: Callback, batch: Batch):
+def _make_call(loop_state: LoopState[S], callback: LoopCallback[S], batch: Batch):
     try:
         loop_state.elapsed = loop_state.elapsed.update_time()
-        callback_outputs = inject(
-            callback, loop_state.state, batch, loop_state.elapsed, loop_state
-        )
-        if callback_outputs is not None:
-            logs, state = callback_outputs
-            if logs is not None:
-                loop_state.step_logs.merge(logs)
-                loop_state.accumulated_logs.merge(logs)
-            if state is not None:
-                loop_state.state = state
+        logs, state = callback.loop_callback(batch, loop_state)
+        loop_state.step_logs.merge(logs)
+        loop_state.accumulated_logs.merge(logs)
+        loop_state.state = state
     except BaseException as e:
         raise type(e)(f"Error in callback {callback}: {e}") from e
