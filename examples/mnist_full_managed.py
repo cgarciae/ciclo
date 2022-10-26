@@ -75,7 +75,6 @@ state = ManagedState.create(
     tx=optax.adamw(1e-3),
     accuracy=Accuracy.empty(),
     loss=AverageLoss.empty(),
-    key=jax.random.PRNGKey(0),
     strategy=strategy,
 )
 
