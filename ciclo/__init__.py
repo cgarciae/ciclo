@@ -2,7 +2,7 @@ __version__ = "0.1.0"
 
 
 from . import managed
-from .api import Elapsed, Period
+from .api import Elapsed, Period, LogsLike
 from .utils import at, callback, elapse, logs, history
 from .callbacks import (
     checkpoint,

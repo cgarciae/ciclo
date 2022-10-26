@@ -61,7 +61,8 @@ class LoopCallback(Protocol, Generic[S]):
         ...
 
 
-GeneralCallback = Callable[[S, Batch, Broadcasts, Statics], CallbackOutput[S]]
+FunctionCallbackOutputs = Optional[Tuple[Optional[LogsLike], Optional[S]]]
+GeneralCallback = Callable[[S, Batch, Broadcasts, Statics], FunctionCallbackOutputs[S]]
 InputTasks = Dict[Schedule, Union[InputCallback, List[InputCallback]]]
 ScheduleCallback = Dict[Schedule, List[LoopCallback[S]]]
 CallbackAdapter = Callable[[Any], LoopCallback[S]]
@@ -182,16 +183,25 @@ class Period:
 class Logs(LogsLike):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._trace_level = tracers.trace_level(tracers.current_trace())
+        # copy mutable values
+        for k, v in self.items():
+            if isinstance(v, MutableMapping):
+                self[k] = dict(v)
+
+    @property
+    def updates(self) -> Optional[LogsLike]:
+        # raise error if accessed
+        raise AttributeError("updates is a write-only attribute")
+
+    @updates.setter
+    def updates(self, updates: Optional[LogsLike]) -> None:
+        if updates is not None:
+            self.merge(updates)
 
     # ----------------------------------
     # logger behavior
     # ----------------------------------
     def add(self, collection: str, key: str, value: Any) -> "Logs":
-
-        log_trace_level = tracers.trace_level(tracers.current_trace())
-        if log_trace_level != self._trace_level:
-            raise ValueError("log must be called from the same trace level")
 
         if collection not in self:
             self[collection] = {}
@@ -270,7 +280,7 @@ class Logs(LogsLike):
             return collections[0]
         else:
             raise ValueError(
-                f"Found multiple collections for key {key}: {collections}. "
+                f"Found multiple collections for key '{key}' : {collections}. "
                 "Use `collection.key` syntax."
             )
 
@@ -310,12 +320,11 @@ class Logs(LogsLike):
 
 
 def _logs_tree_flatten(self):
-    return (dict(self),), self._trace_level
+    return (dict(self),), None
 
 
 def _logs_tree_unflatten(aux_data, children):
     self = Logs(children[0])
-    self._trace_level = aux_data
     return self
 
 
@@ -382,9 +391,6 @@ class LoopCallbackBase(LoopCallback[S]):
         self, batch: Batch, loop_state: "LoopState[S]"
     ) -> CallbackOutput[S]:
         ...
-
-
-FunctionCallbackOutputs = Optional[Tuple[Optional[LogsLike], Optional[S]]]
 
 
 @dataclass(frozen=True)

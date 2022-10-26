@@ -50,7 +50,7 @@ def train_step(state: managed.ManagedState, batch):
 
 
 # Training loop
-total_samples = 32 * 1_000
+total_samples = 32 * 10_000
 total_steps = total_samples // batch_size
 
 state, history, _ = ciclo.loop(

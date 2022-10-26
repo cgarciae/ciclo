@@ -15,9 +15,8 @@ import jax
 F = TypeVar("F", bound=Callable[..., Any])
 
 
-def logs(**kwargs: Dict[str, Any]) -> Logs:
-    # copy internal dicts to avoid side effects
-    return Logs({k: v.copy() for k, v in kwargs.items()})
+def logs(*args, **kwargs: Dict[str, Any]) -> Logs:
+    return Logs(*args, **kwargs)
 
 
 def history(logs_list: Optional[List[LogsLike]] = None) -> History:

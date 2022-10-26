@@ -175,13 +175,13 @@ class Strategy(ABC):
         return jax.device_get(logs)
 
     @abstractmethod
-    def __call__(self, callback: GeneralCallback) -> GeneralCallback:
+    def __call__(self, callback: GeneralCallback[S]) -> GeneralCallback[S]:
         ...
 
 
 @dataclass(eq=True, frozen=True)
 class Eager(Strategy):
-    def __call__(self, callback: GeneralCallback) -> GeneralCallback:
+    def __call__(self, callback: GeneralCallback[S]) -> GeneralCallback[S]:
         return callback
 
 
@@ -189,7 +189,7 @@ class Eager(Strategy):
 class JIT(Strategy):
     donate_args: bool = False
 
-    def __call__(self, callback: GeneralCallback) -> GeneralCallback:
+    def __call__(self, callback: GeneralCallback[S]) -> GeneralCallback[S]:
         return jax.jit(
             callback,
             donate_argnums=0 if self.donate_args else (),
@@ -261,7 +261,7 @@ class DataParallel(Strategy):
     def lower_replicated(self, logs: A) -> A:
         return jax.tree_util.tree_map(lambda x: x[0], logs)
 
-    def __call__(self, callback: GeneralCallback) -> GeneralCallback:
+    def __call__(self, callback: GeneralCallback[S]) -> GeneralCallback[S]:
         return jax.pmap(
             callback,
             axis_name=self.axis_name,

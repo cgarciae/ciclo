@@ -16,6 +16,7 @@ from typing import (
     MutableMapping,
     Optional,
     Tuple,
+    Type,
     TypeVar,
     Union,
 )
@@ -71,6 +72,9 @@ class ManagedCallback(Protocol, Generic[S]):
     ) -> CallbackOutput[S]:
         ...
 
+    def get_function_with_input_signature(self) -> Callable:
+        ...
+
 
 @dataclass(frozen=True)
 class ManagedFunctionCallback(ManagedCallback[S]):
@@ -86,6 +90,11 @@ class ManagedFunctionCallback(ManagedCallback[S]):
         state = outputs[1] or state
         return logs, state
 
+    def get_function_with_input_signature(
+        self,
+    ) -> Callable[..., FunctionCallbackOutputs[S]]:
+        return self.f
+
 
 class ManagedState(train_state.TrainState):
     """
@@ -96,8 +105,14 @@ class ManagedState(train_state.TrainState):
 
     @classmethod
     def create(
-        cls, *, apply_fn, params, tx, strategy: Union[Strategy, str] = "jit", **kwargs
-    ) -> "ManagedState":
+        cls: Type[S],
+        *,
+        apply_fn,
+        params,
+        tx,
+        strategy: Union[Strategy, str] = "jit",
+        **kwargs,
+    ) -> S:
         state = super().create(
             apply_fn=apply_fn,
             params=params,
@@ -121,11 +136,14 @@ class ManagedState(train_state.TrainState):
 class ManagedStep(LoopCallbackBase[S]):
     strategy_callbacks: Dict[Strategy, ManagedCallbackCallable[S]]
     default_strategy: Strategy
-    step_fn: ManagedCallback[S]
+    managed_step_fn: ManagedCallback[S]
 
-    def __call__(
-        self, state: S, batch: Batch, broadcasts: Broadcasts, statics: Statics
-    ) -> CallbackOutput[S]:
+    def __call__(self, state: S, *args: Any) -> CallbackOutput[S]:
+
+        if len(args) > 3:
+            raise ValueError(f"Expected a maximum of 4 arguments, got {len(args) + 1}")
+
+        batch, broadcasts, statics = args + (None,) * (3 - len(args))
 
         if isinstance(state, HasStrategy):
             strategy = state.strategy
@@ -135,7 +153,7 @@ class ManagedStep(LoopCallbackBase[S]):
 
         if strategy not in self.strategy_callbacks:
             self.strategy_callbacks[strategy] = strategy(
-                self.get_postprocessed_callback(strategy)
+                self.get_final_callback(strategy)
             )
 
         callback = self.strategy_callbacks[strategy]
@@ -155,9 +173,8 @@ class ManagedStep(LoopCallbackBase[S]):
 
         return logs, state
 
-    def get_postprocessed_callback(
-        self, strategy: Strategy
-    ) -> ManagedCallbackCallable[S]:
+    def get_final_callback(self, strategy: Strategy) -> ManagedCallbackCallable[S]:
+        # @functools.wraps(self.managed_step_fn.get_function_with_input_signature())
         def lifted_postprocess(
             state: S, batch: Batch, broadcasts: Broadcasts, statics: Statics
         ) -> CallbackOutput[S]:
@@ -183,7 +200,7 @@ class ManagedStep(LoopCallbackBase[S]):
         return lifted_postprocess
 
     def get_step_callback(self, strategy: Strategy) -> ManagedCallbackCallable[S]:
-        return self.step_fn.managed_callback
+        return self.managed_step_fn.managed_callback
 
     def loop_callback(
         self, batch: Batch, loop_state: "LoopState[S]"
@@ -200,7 +217,7 @@ class ManagedTrainStep(ManagedStep[S]):
         ) -> CallbackOutput[S]:
             def loss_fn(params):
                 _state = state.replace(params=params)
-                logs, _state = self.step_fn.managed_callback(
+                logs, _state = self.managed_step_fn.managed_callback(
                     _state, batch, broadcasts, statics
                 )
                 if "losses" not in logs:
@@ -240,24 +257,24 @@ class ManagedTrainStep(ManagedStep[S]):
 
 
 def train_step(
-    step_fn: Callable[..., CallbackOutput[S]],
+    step_fn: Callable[..., FunctionCallbackOutputs[S]],
     strategy: Union[Strategy, str] = "jit",
 ) -> ManagedTrainStep[S]:
     strategy = get_strategy(strategy) if isinstance(strategy, str) else strategy
     return ManagedTrainStep(
         strategy_callbacks={},
         default_strategy=strategy,
-        step_fn=ManagedFunctionCallback(step_fn),
+        managed_step_fn=ManagedFunctionCallback(step_fn),
     )
 
 
 def step(
-    step_fn: Callable[..., CallbackOutput[S]],
+    step_fn: Callable[..., FunctionCallbackOutputs[S]],
     strategy: Union[Strategy, str] = "jit",
 ) -> ManagedStep[S]:
     strategy = get_strategy(strategy) if isinstance(strategy, str) else strategy
     return ManagedStep(
         strategy_callbacks={},
         default_strategy=strategy,
-        step_fn=ManagedFunctionCallback(step_fn),
+        managed_step_fn=ManagedFunctionCallback(step_fn),
     )

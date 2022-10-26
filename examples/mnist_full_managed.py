@@ -37,7 +37,6 @@ AverageLoss = Average.from_output("loss")
 class ManagedState(managed.ManagedState):
     accuracy: Accuracy
     loss: AverageLoss
-    key: jax.random.KeyArray
 
 
 def loss_fn(state: ManagedState, batch):

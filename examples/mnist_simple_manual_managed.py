@@ -6,15 +6,19 @@ import flax.linen as nn
 import jax
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
+import numpy as np
 import optax
 import tensorflow as tf
 import tensorflow_datasets as tfds
+from ciclo import managed
 from flax.training.train_state import TrainState
-import numpy as np
+
+strategy = ciclo.get_strategy("data_parallel")
+batch_size = strategy.lift_batch_size(32)
 
 # load the MNIST dataset
 ds_train: tf.data.Dataset = tfds.load("mnist", split="train", shuffle_files=True)
-ds_train = ds_train.repeat().shuffle(1024).batch(32).prefetch(1)
+ds_train = ds_train.repeat().shuffle(1024).batch(batch_size).prefetch(1)
 
 # Define model
 class Linear(nn.Module):
@@ -26,37 +30,33 @@ class Linear(nn.Module):
         return x
 
 
-@jax.jit
-def train_step(state: TrainState, batch):
+@managed.train_step
+def train_step(state: managed.ManagedState, batch):
     inputs, labels = batch["image"], batch["label"]
-
-    def loss_fn(params):
-        logits = state.apply_fn({"params": params}, inputs)
-        loss = optax.softmax_cross_entropy_with_integer_labels(
-            logits=logits, labels=labels
-        ).mean()
-        return loss, logits
-
-    (loss, logits), grads = jax.value_and_grad(loss_fn, has_aux=True)(state.params)
-    state = state.apply_gradients(grads=grads)
-    logs = {
-        "loss": loss,
-        "accuracy": jnp.mean(jnp.argmax(logits, -1) == labels),
-    }
-    return {"metrics": logs}, state
+    logits = state.apply_fn({"params": state.params}, inputs)
+    loss = optax.softmax_cross_entropy_with_integer_labels(
+        logits=logits, labels=labels
+    ).mean()
+    logs = ciclo.logs()
+    logs.add_loss("loss", loss, add_metric=True)
+    logs.add_metric("accuracy", jnp.mean(jnp.argmax(logits, -1) == labels))
+    logs.add_output("logits", logits)
+    return logs, state
 
 
 # Initialize state
 model = Linear()
 variables = model.init(jax.random.PRNGKey(0), jnp.empty((1, 28, 28, 1)))
-state = TrainState.create(
+state = managed.ManagedState.create(
     apply_fn=model.apply,
     params=variables["params"],
-    tx=optax.adamw(1e-3),
+    tx=optax.adamw(3e-3),
+    strategy=strategy,
 )
 
 # training loop
-total_steps = 10_000
+total_samples = 32 * 100_000
+total_steps = total_samples // batch_size
 
 checkpoint_schedule = ciclo.every(1000)
 checkpoint = ciclo.checkpoint(f"logdir/mnist_simple/{int(time())}")
@@ -75,7 +75,7 @@ for elapsed, batch in ciclo.elapse(ds_train.as_numpy_iterator()):
         break
 
 # plot the training history
-steps, loss, accuracy = history.collect("steps", "loss", "accuracy")
+steps, loss, accuracy = history.collect("steps", "metrics.loss", "accuracy")
 
 # %%
 # use subplots to plot loss and accuracy on the same figure

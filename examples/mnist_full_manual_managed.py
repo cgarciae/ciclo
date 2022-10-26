@@ -13,12 +13,16 @@ import tensorflow_datasets as tfds
 from clu.metrics import Accuracy, Average, Collection
 from flax import struct
 from flax.training import train_state
+from ciclo import managed
+
+strategy = ciclo.get_strategy("jit")
+batch_size = strategy.lift_batch_size(32)
 
 # load the MNIST dataset
 ds_train: tf.data.Dataset = tfds.load("mnist", split="train", shuffle_files=True)
-ds_train = ds_train.repeat().shuffle(1024).batch(32).prefetch(1)
+ds_train = ds_train.repeat().shuffle(1024).batch(batch_size).prefetch(1)
 ds_valid: tf.data.Dataset = tfds.load("mnist", split="test")
-ds_valid = ds_valid.batch(32, drop_remainder=True).prefetch(1)
+ds_valid = ds_valid.batch(batch_size, drop_remainder=True).prefetch(1)
 
 # Define model
 class Linear(nn.Module):
@@ -40,60 +44,57 @@ class Metrics(Collection):
         return self.merge(updates)
 
 
-class TrainState(train_state.TrainState):
-    metrics: Metrics
+AverageLoss = Average.from_output("loss")
 
 
-@jax.jit
-def train_step(state: TrainState, batch):
-    def loss_fn(params):
-        logits = state.apply_fn({"params": params}, batch["image"])
-        loss = optax.softmax_cross_entropy_with_integer_labels(
-            logits=logits, labels=batch["label"]
-        ).mean()
-        return loss, logits
-
-    (loss, logits), grads = jax.value_and_grad(loss_fn, has_aux=True)(state.params)
-    state = state.apply_gradients(grads=grads)
-    metrics = state.metrics.update(loss=loss, logits=logits, labels=batch["label"])
-    return None, state.replace(metrics=metrics)
+class ManagedState(managed.ManagedState):
+    accuracy: Accuracy
+    loss: AverageLoss
 
 
-@jax.jit
-def compute_metrics(state: TrainState):
-    logs = state.metrics.compute()
-    return {"stateful_metrics": logs}, None
-
-
-@jax.jit
-def eval_step(state: TrainState, batch):
-    logits = state.apply_fn({"params": state.params}, batch["image"])
+def loss_fn(state: ManagedState, batch):
+    inputs, labels = batch["image"], batch["label"]
+    logits = state.apply_fn({"params": state.params}, inputs)
     loss = optax.softmax_cross_entropy_with_integer_labels(
-        logits=logits, labels=batch["label"]
+        logits=logits, labels=labels
     ).mean()
-    metrics = state.metrics.update(loss=loss, logits=logits, labels=batch["label"])
-    logs = metrics.compute()
-    return {"stateful_metrics": logs}, state.replace(metrics=metrics)
+    logs = ciclo.logs()
+    logs.add_loss("loss", loss)
+    logs.add_metric(
+        "accuracy", Accuracy.from_model_output(logits=logits, labels=labels)
+    )
+    logs.add_metric("loss", AverageLoss.from_model_output(loss=loss))
+    return logs, state
 
 
-def reset_metrics(state: TrainState):
-    return None, state.replace(metrics=state.metrics.empty())
+train_step = managed.train_step(loss_fn)
+eval_step = managed.step(loss_fn)
+
+
+@managed.step
+def reset_metrics(state: ManagedState):
+    return None, state.replace(
+        accuracy=Accuracy.empty(),
+        loss=AverageLoss.empty(),
+    )
 
 
 # Initialize state
 model = Linear()
 variables = model.init(jax.random.PRNGKey(0), jnp.empty((1, 28, 28, 1)))
-state = TrainState.create(
+state = ManagedState.create(
     apply_fn=model.apply,
     params=variables["params"],
     tx=optax.adamw(1e-3),
-    metrics=Metrics.empty(),
+    accuracy=Accuracy.empty(),
+    loss=AverageLoss.empty(),
+    strategy=strategy,
 )
 
 # training loop
-total_steps = 10_000
-eval_steps = 1_000
-log_steps = 200
+total_samples = 32 * 10_000
+total_steps = total_samples // batch_size
+eval_steps = total_steps // 10
 
 checkpoint = ciclo.checkpoint(
     f"logdir/mnist_full/{int(time())}", monitor="accuracy_valid", mode="max"
@@ -101,7 +102,6 @@ checkpoint = ciclo.checkpoint(
 early_stopping = ciclo.early_stopping(
     monitor="accuracy_valid", mode="max", patience=eval_steps * 2
 )
-is_time_to_compute_metrics = ciclo.every(log_steps)
 is_time_to_eval = ciclo.every(eval_steps)
 keras_bar = ciclo.keras_bar(total=total_steps)
 end_period = ciclo.at(total_steps)
@@ -111,10 +111,6 @@ stop_iteration = False
 for elapsed, batch in ciclo.elapse(ds_train.as_numpy_iterator()):
     logs = ciclo.logs()
     logs.updates, state = train_step(state, batch)
-
-    if is_time_to_compute_metrics(elapsed):
-        logs.updates, _ = compute_metrics(state)
-        _, state = reset_metrics(state)
 
     if is_time_to_eval(elapsed):
         # --------------------
@@ -138,9 +134,9 @@ for elapsed, batch in ciclo.elapse(ds_train.as_numpy_iterator()):
     if stop_iteration or elapsed >= end_period:
         break
 
-steps, loss, accuracy = history.collect("steps", "loss", "accuracy")
+steps, loss, accuracy = history.collect("steps", "stateful_metrics.loss", "accuracy")
 steps_valid, loss_valid, accuracy_valid = history.collect(
-    "steps", "loss_valid", "accuracy_valid"
+    "steps", "stateful_metrics.loss_valid", "accuracy_valid"
 )
 
 _, axs = plt.subplots(1, 2)
