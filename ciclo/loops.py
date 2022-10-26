@@ -1,7 +1,8 @@
 from dataclasses import dataclass
-from typing import Any, List, Optional, Union
+from typing import Any, Iterable, List, Optional, Union
 from ciclo.api import (
     S,
+    B,
     Batch,
     Callback,
     Elapsed,
@@ -15,12 +16,12 @@ from ciclo.api import (
     get_callback,
     inject,
 )
-from ciclo.utils import get_batch_size
+from ciclo.utils import get_batch_size, elapse
 
 
 def loop(
     state: S,
-    dataset,
+    dataset: Iterable[B],
     tasks: InputTasks,
     *,
     stop: Union[Period, int, None] = None,
@@ -40,17 +41,24 @@ def loop(
     if history is None:
         history = History()
 
-    if elapsed is None:
-        elapsed = Elapsed.create()
-
     loop_state = LoopState(
         state=state,
         history=history,
-        elapsed=elapsed,
+        elapsed=elapsed or Elapsed.create(),
         step_logs=Logs(),
         accumulated_logs=Logs(),
         metadata=metadata,
     )
+
+    if on_start is None:
+        on_start = []
+    elif not isinstance(on_start, list):
+        on_start = [on_start]
+
+    if on_end is None:
+        on_end = []
+    elif not isinstance(on_end, list):
+        on_end = [on_end]
 
     tasks_ = [
         (
@@ -62,18 +70,16 @@ def loop(
         )
         for schedule, callbacks in tasks.items()
     ]
-    batch = None
 
     try:
-        for i, batch in enumerate(dataset):
-            loop_state.step_logs = Logs()
-            elapsed_initial = loop_state.elapsed.update(get_batch_size(batch))
-            loop_state.elapsed = elapsed_initial
+        batch = None
+
+        for i, (elapsed, batch) in enumerate(elapse(dataset, initial=elapsed)):
+            loop_state.elapsed = elapsed
 
             # call on_start on first batch
-            if i == 0 and on_start is not None:
-                if not isinstance(on_start, list):
-                    on_start = [on_start]
+            if i == 0:
+                loop_state.step_logs = Logs()
                 for callback in on_start:
                     callback = get_callback(callback)
                     _make_call(loop_state, callback, batch)
@@ -89,7 +95,7 @@ def loop(
                     break
 
             if loop_state.step_logs:
-                loop_state.step_logs["elapsed"] = elapsed_initial
+                loop_state.step_logs["elapsed"] = elapsed
                 loop_state.history.append(loop_state.step_logs)
 
             if loop_state.stop_iteration or (
@@ -98,13 +104,10 @@ def loop(
                 break
 
         # call on_end on last batch
-        if on_end is not None:
-            loop_state.step_logs = Logs()
-            if not isinstance(on_end, list):
-                on_end = [on_end]
-            for callback in on_end:
-                callback = get_callback(callback)
-                _make_call(loop_state, callback, batch)
+        loop_state.step_logs = Logs()
+        for callback in on_end:
+            callback = get_callback(callback)
+            _make_call(loop_state, callback, batch)
 
     except KeyboardInterrupt:
         if catch_keyboard_interrupt:

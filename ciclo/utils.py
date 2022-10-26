@@ -1,5 +1,5 @@
-from typing import Any, Callable, Dict, Optional, TypeVar
-from ciclo.api import Batch, Callback, FunctionCallback, Period, Logs
+from typing import Any, Callable, Dict, Iterable, Optional, Tuple, TypeVar
+from ciclo.api import Batch, Callback, Elapsed, FunctionCallback, Period, Logs, B
 import jax
 
 F = TypeVar("F", bound=Callable[..., Any])
@@ -42,3 +42,13 @@ def is_scalar(x):
 
 def callback(f) -> FunctionCallback:
     return FunctionCallback(f)
+
+
+def elapse(
+    dataset: Iterable[B], initial: Optional[Elapsed] = None
+) -> Iterable[Tuple[Elapsed, B]]:
+    elapsed = initial or Elapsed.create()
+    for batch in dataset:
+        batch_size = get_batch_size(batch)
+        elapsed = elapsed.update(batch_size)
+        yield elapsed, batch
