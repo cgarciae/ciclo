@@ -349,6 +349,12 @@ class History(List[Logs]):
 
         return outputs if len(keys) > 1 else outputs[0]
 
+    def commit_logs(self, elapsed: Elapsed, logs: LogsLike):
+        if not isinstance(logs, Logs):
+            logs = Logs(logs)
+        logs["elapsed"] = elapsed
+        self.append(logs)
+
 
 @dataclass
 class LoopState(Generic[S]):

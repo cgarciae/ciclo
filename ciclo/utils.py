@@ -1,6 +1,8 @@
-from typing import Any, Callable, Dict, Iterable, Optional, Tuple, TypeVar
+from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, TypeVar
 from ciclo.api import (
     Batch,
+    History,
+    LogsLike,
     LoopCallback,
     Elapsed,
     LoopFunctionCallback,
@@ -16,6 +18,15 @@ F = TypeVar("F", bound=Callable[..., Any])
 def logs(**kwargs: Dict[str, Any]) -> Logs:
     # copy internal dicts to avoid side effects
     return Logs({k: v.copy() for k, v in kwargs.items()})
+
+
+def history(logs_list: Optional[List[LogsLike]] = None) -> History:
+    if logs_list is None:
+        return History()
+
+    return History(
+        Logs(logs) if not isinstance(logs, Logs) else logs for logs in logs_list
+    )
 
 
 def at(

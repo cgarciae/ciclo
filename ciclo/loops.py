@@ -95,8 +95,7 @@ def loop(
                     break
 
             if loop_state.step_logs:
-                loop_state.step_logs["elapsed"] = elapsed
-                loop_state.history.append(loop_state.step_logs)
+                loop_state.history.commit_logs(elapsed, loop_state.step_logs)
 
             if loop_state.stop_iteration or (
                 stop_period is not None and loop_state.elapsed >= stop_period
