@@ -41,6 +41,7 @@ from ciclo.api import (
     Metric,
     LoopState,
     FunctionCallbackOutputs,
+    to_standard_outputs,
 )
 
 from ciclo.strategies import Strategy, get_strategy
@@ -84,11 +85,7 @@ class ManagedFunctionCallback(ManagedCallback[S]):
         self, state: S, batch: Batch, broadcast: Broadcasts, statics: Statics
     ) -> CallbackOutput[S]:
         outputs = inject(self.f, state, batch, broadcast, statics)
-        if outputs is None:
-            return {}, state
-        logs = outputs[0] or {}
-        state = outputs[1] or state
-        return logs, state
+        return to_standard_outputs(outputs, state)
 
     def get_function_with_input_signature(
         self,
@@ -202,10 +199,8 @@ class ManagedStep(LoopCallbackBase[S]):
     def get_step_callback(self, strategy: Strategy) -> ManagedCallbackCallable[S]:
         return self.managed_step_fn.managed_callback
 
-    def loop_callback(
-        self, batch: Batch, loop_state: "LoopState[S]"
-    ) -> CallbackOutput[S]:
-        logs, state = self(loop_state.state, batch, loop_state.elapsed, None)
+    def __loop_callback__(self, loop_state: LoopState[S]) -> CallbackOutput[S]:
+        logs, state = self(loop_state.state, loop_state.batch, loop_state.elapsed, None)
         return logs, state
 
 

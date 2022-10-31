@@ -133,7 +133,7 @@ for elapsed, batch in ciclo.elapse(ds_train.as_numpy_iterator()):
         stop_iteration, state = early_stopping(elapsed, state, logs)
 
     keras_bar(elapsed, logs)
-    history.commit_logs(elapsed, logs)
+    history.commit(elapsed, logs)
 
     if stop_iteration or elapsed >= end_period:
         break

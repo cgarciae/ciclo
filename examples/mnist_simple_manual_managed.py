@@ -55,7 +55,7 @@ state = managed.ManagedState.create(
 )
 
 # training loop
-total_samples = 32 * 100_000
+total_samples = 32 * 10_000
 total_steps = total_samples // batch_size
 
 checkpoint_schedule = ciclo.every(1000)
@@ -69,7 +69,7 @@ for elapsed, batch in ciclo.elapse(ds_train.as_numpy_iterator()):
     if checkpoint_schedule(elapsed):
         checkpoint(elapsed, state)
     keras_bar(elapsed, logs)
-    history.commit_logs(elapsed, logs)
+    history.commit(elapsed, logs)
 
     if elapsed >= end_period:
         break

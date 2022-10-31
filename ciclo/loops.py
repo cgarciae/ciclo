@@ -43,9 +43,10 @@ def loop(
 
     loop_state = LoopState(
         state=state,
+        batch=None,
         history=history,
         elapsed=elapsed or Elapsed.create(),
-        step_logs=Logs(),
+        logs=Logs(),
         accumulated_logs=Logs(),
         metadata=metadata,
     )
@@ -72,41 +73,41 @@ def loop(
     ]
 
     try:
-        batch = None
 
         for i, (elapsed, batch) in enumerate(elapse(dataset, initial=elapsed)):
             loop_state.elapsed = elapsed
+            loop_state.batch = batch
 
             # call on_start on first batch
             if i == 0:
-                loop_state.step_logs = Logs()
+                loop_state.logs = Logs()
                 for callback in on_start:
                     callback = get_loop_callback(callback)
-                    _make_call(loop_state, callback, batch)
+                    _make_call(loop_state, callback)
 
-            loop_state.step_logs = Logs()
+            loop_state.logs = Logs()
             for s, (schedule, callbacks) in enumerate(tasks_):
                 if schedule(loop_state.elapsed):
                     for callback in callbacks:
-                        _make_call(loop_state, callback, batch)
+                        _make_call(loop_state, callback)
                         if loop_state.stop_iteration:
                             break
                 if loop_state.stop_iteration:
                     break
 
-            if loop_state.step_logs:
-                loop_state.history.commit_logs(elapsed, loop_state.step_logs)
+            if loop_state.logs:
+                loop_state.history.commit(elapsed, loop_state.logs)
 
             if loop_state.stop_iteration or (
-                stop_period is not None and loop_state.elapsed >= stop_period
+                stop_period and loop_state.elapsed >= stop_period
             ):
                 break
 
         # call on_end on last batch
-        loop_state.step_logs = Logs()
+        loop_state.logs = Logs()
         for callback in on_end:
             callback = get_loop_callback(callback)
-            _make_call(loop_state, callback, batch)
+            _make_call(loop_state, callback)
 
     except KeyboardInterrupt:
         if catch_keyboard_interrupt:
@@ -117,11 +118,11 @@ def loop(
     return loop_state.state, loop_state.history, loop_state.elapsed
 
 
-def _make_call(loop_state: LoopState[S], callback: LoopCallback[S], batch: Batch):
+def _make_call(loop_state: LoopState[S], callback: LoopCallback[S]):
     try:
         loop_state.elapsed = loop_state.elapsed.update_time()
-        logs, state = callback.loop_callback(batch, loop_state)
-        loop_state.step_logs.merge(logs)
+        logs, state = callback.__loop_callback__(loop_state)
+        loop_state.logs.merge(logs)
         loop_state.accumulated_logs.merge(logs)
         loop_state.state = state
     except BaseException as e:

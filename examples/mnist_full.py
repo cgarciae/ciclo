@@ -56,17 +56,17 @@ def train_step(state: TrainState, batch):
     (loss, logits), grads = jax.value_and_grad(loss_fn, has_aux=True)(state.params)
     state = state.apply_gradients(grads=grads)
     metrics = state.metrics.update(loss=loss, logits=logits, labels=batch["label"])
-    return None, state.replace(metrics=metrics)
+    return state.replace(metrics=metrics)
 
 
 @jax.jit
-def compute_metrics(state: TrainState, batch, _):
+def compute_metrics(state: TrainState):
     logs = state.metrics.compute()
-    return {"stateful_metrics": logs}, None
+    return {"stateful_metrics": logs}
 
 
 @jax.jit
-def eval_step(state: TrainState, batch, _):
+def eval_step(state: TrainState, batch):
     logits = state.apply_fn({"params": state.params}, batch["image"])
     loss = optax.softmax_cross_entropy_with_integer_labels(
         logits=logits, labels=batch["label"]
@@ -76,8 +76,8 @@ def eval_step(state: TrainState, batch, _):
     return {"stateful_metrics": logs}, state.replace(metrics=metrics)
 
 
-def reset_metrics(state: TrainState, batch, _):
-    return None, state.replace(metrics=state.metrics.empty())
+def reset_metrics(state: TrainState):
+    return state.replace(metrics=state.metrics.empty())
 
 
 # Initialize state

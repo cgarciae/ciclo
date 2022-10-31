@@ -58,7 +58,7 @@ state = TrainState.create(
 # training loop
 total_steps = 10_000
 
-checkpoint_schedule = ciclo.every(1000)
+checkpoint_schedule = ciclo.every(steps=1000)
 checkpoint = ciclo.checkpoint(f"logdir/mnist_simple/{int(time())}")
 keras_bar = ciclo.keras_bar(total=total_steps)
 end_period = ciclo.at(total_steps)
@@ -69,7 +69,7 @@ for elapsed, batch in ciclo.elapse(ds_train.as_numpy_iterator()):
     if checkpoint_schedule(elapsed):
         checkpoint(elapsed, state)
     keras_bar(elapsed, logs)
-    history.commit_logs(elapsed, logs)
+    history.commit(elapsed, logs)
 
     if elapsed >= end_period:
         break

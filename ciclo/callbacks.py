@@ -101,9 +101,7 @@ class inner_loop(LoopCallbackBase[S]):
         }
         return logs, (inner_state if self.output_state else state)
 
-    def loop_callback(
-        self, batch: Batch, loop_state: "LoopState[S]"
-    ) -> CallbackOutput[S]:
+    def __loop_callback__(self, loop_state: LoopState[S]) -> CallbackOutput[S]:
         return self(loop_state.state)
 
 
@@ -181,9 +179,7 @@ class checkpoint(LoopCallbackBase[S]):
                 async_manager=self.async_manager,
             )
 
-    def loop_callback(
-        self, batch: Batch, loop_state: "LoopState[S]"
-    ) -> CallbackOutput[S]:
+    def __loop_callback__(self, loop_state: LoopState[S]) -> CallbackOutput[S]:
         self(loop_state.elapsed, loop_state.state, loop_state.accumulated_logs)
         return {}, loop_state.state
 
@@ -251,9 +247,7 @@ class early_stopping(LoopCallbackBase[S]):
 
         return stop_iteration, state
 
-    def loop_callback(
-        self, batch: Batch, loop_state: "LoopState[S]"
-    ) -> CallbackOutput[S]:
+    def __loop_callback__(self, loop_state: LoopState[S]) -> CallbackOutput[S]:
         stop_iteration, state = self(
             loop_state.elapsed, loop_state.state, loop_state.accumulated_logs
         )
@@ -372,10 +366,8 @@ class tqdm_bar(LoopCallbackBase[S]):
         else:
             raise ValueError("Invalid total")
 
-    def loop_callback(
-        self, batch: Batch, loop_state: "LoopState[S]"
-    ) -> CallbackOutput[S]:
-        self(loop_state.elapsed, batch)
+    def __loop_callback__(self, loop_state: LoopState[S]) -> CallbackOutput[S]:
+        self(loop_state.elapsed, loop_state.batch)
         return {}, loop_state.state
 
 
@@ -405,12 +397,10 @@ class keras_bar(LoopCallbackBase[S]):
             elif total.time is not None:
                 bar_total = total.time
                 unit_name = "s"
-                unit_scale = True
             elif total.date is not None:
-                total.time = total.date - datetime.now().timestamp()
+                total = replace(total, time=total.date - datetime.now().timestamp())
                 bar_total = total.time
                 unit_name = "s"
-                unit_scale = True
             else:
                 raise ValueError("Invalid total")
         else:
@@ -460,10 +450,8 @@ class keras_bar(LoopCallbackBase[S]):
                 values=[(k, v) for k, v in metrics.items() if is_scalar(v)],
             )
 
-    def loop_callback(
-        self, batch: Batch, loop_state: "LoopState[S]"
-    ) -> CallbackOutput[S]:
-        self(loop_state.elapsed, loop_state.step_logs)
+    def __loop_callback__(self, loop_state: LoopState[S]) -> CallbackOutput[S]:
+        self(loop_state.elapsed, loop_state.logs)
         return {}, loop_state.state
 
 
@@ -485,17 +473,13 @@ class wandb_logger(LoopCallbackBase[S]):
         if len(data) > 0:
             self.run.log(data, step=elapsed.steps)
 
-    def loop_callback(
-        self, batch: Batch, loop_state: "LoopState[S]"
-    ) -> CallbackOutput[S]:
-        self(loop_state.elapsed, loop_state.step_logs)
+    def __loop_callback__(self, loop_state: LoopState[S]) -> CallbackOutput[S]:
+        self(loop_state.elapsed, loop_state.logs)
         return {}, loop_state.state
 
 
 class NoOp(LoopCallbackBase[S]):
-    def loop_callback(
-        self, batch: Batch, loop_state: "LoopState[S]"
-    ) -> CallbackOutput[S]:
+    def __loop_callback__(self, loop_state: LoopState[S]) -> CallbackOutput[S]:
         return {}, loop_state.state
 
 
@@ -512,9 +496,7 @@ if importlib.util.find_spec("clu") is not None:
     class PeriodicActionCallback(LoopCallbackBase[S]):
         action: PeriodicAction
 
-        def loop_callback(
-            self, batch: Batch, loop_state: "LoopState[S]"
-        ) -> CallbackOutput[S]:
+        def __loop_callback__(self, loop_state: LoopState[S]) -> CallbackOutput[S]:
             self.action(loop_state.elapsed.steps, t=loop_state.elapsed.date)
             return {}, loop_state.state
 

@@ -55,13 +55,13 @@ CallbackOutput = Tuple[LogsLike, S]
 
 @runtime_checkable
 class LoopCallback(Protocol, Generic[S]):
-    def loop_callback(
-        self, batch: Batch, loop_state: "LoopState[S]"
-    ) -> CallbackOutput[S]:
+    def __loop_callback__(self, loop_state: "LoopState[S]") -> CallbackOutput[S]:
         ...
 
 
-FunctionCallbackOutputs = Optional[Tuple[Optional[LogsLike], Optional[S]]]
+FunctionCallbackOutputs = Union[
+    Tuple[Optional[LogsLike], Optional[S]], LogsLike, S, None
+]
 GeneralCallback = Callable[[S, Batch, Broadcasts, Statics], FunctionCallbackOutputs[S]]
 InputTasks = Dict[Schedule, Union[InputCallback, List[InputCallback]]]
 ScheduleCallback = Dict[Schedule, List[LoopCallback[S]]]
@@ -358,7 +358,7 @@ class History(List[Logs]):
 
         return outputs if len(keys) > 1 else outputs[0]
 
-    def commit_logs(self, elapsed: Elapsed, logs: LogsLike):
+    def commit(self, elapsed: Elapsed, logs: LogsLike):
         if not isinstance(logs, Logs):
             logs = Logs(logs)
         logs["elapsed"] = elapsed
@@ -368,15 +368,42 @@ class History(List[Logs]):
 @dataclass
 class LoopState(Generic[S]):
     state: S
+    batch: Batch
     history: History
     elapsed: Elapsed
-    step_logs: Logs
+    logs: Logs
     accumulated_logs: Logs
     metadata: Any
     stop_iteration: bool = False
 
 
 LoopOutput = Tuple[S, History, Elapsed]
+
+
+def to_standard_outputs(
+    outputs: FunctionCallbackOutputs[S], current_state: S
+) -> CallbackOutput[S]:
+    logs: LogsLike
+    state: S
+    if outputs is None:
+        logs = {}
+        state = current_state
+
+    elif type(outputs) is tuple:
+        if len(outputs) != 2:
+            raise ValueError(
+                f"Invalid output from callback function: {outputs}, must be a tuple of length 2"
+            )
+        logs = outputs[0] or {}
+        state = outputs[1] or current_state
+    elif isinstance(outputs, Dict):
+        logs = outputs
+        state = current_state
+    else:
+        logs = {}
+        state = outputs
+
+    return logs, state
 
 
 class LoopCallbackBase(LoopCallback[S]):
@@ -387,9 +414,7 @@ class LoopCallbackBase(LoopCallback[S]):
         return [self]
 
     @abstractmethod
-    def loop_callback(
-        self, batch: Batch, loop_state: "LoopState[S]"
-    ) -> CallbackOutput[S]:
+    def __loop_callback__(self, loop_state: LoopState[S]) -> CallbackOutput[S]:
         ...
 
 
@@ -397,20 +422,11 @@ class LoopCallbackBase(LoopCallback[S]):
 class LoopFunctionCallback(LoopCallbackBase[S]):
     f: Callable[..., FunctionCallbackOutputs[S]]
 
-    def loop_callback(
-        self, batch: Batch, loop_state: "LoopState[S]"
-    ) -> CallbackOutput[S]:
+    def __loop_callback__(self, loop_state: LoopState[S]) -> CallbackOutput[S]:
         outputs = inject(
-            self.f, loop_state.state, batch, loop_state.elapsed, loop_state
+            self.f, loop_state.state, loop_state.batch, loop_state.elapsed, loop_state
         )
-
-        if outputs is None:
-            return {}, loop_state.state
-
-        logs = outputs[0] or {}
-        state = outputs[1] or loop_state.state
-
-        return logs, state
+        return to_standard_outputs(outputs, loop_state.state)
 
 
 def inject(f: Callable[..., A], *args) -> A:
