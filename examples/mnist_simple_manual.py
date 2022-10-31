@@ -12,9 +12,11 @@ import tensorflow_datasets as tfds
 from flax.training.train_state import TrainState
 import numpy as np
 
+batch_size = 32
+
 # load the MNIST dataset
 ds_train: tf.data.Dataset = tfds.load("mnist", split="train", shuffle_files=True)
-ds_train = ds_train.repeat().shuffle(1024).batch(32).prefetch(1)
+ds_train = ds_train.repeat().shuffle(1024).batch(batch_size).prefetch(1)
 
 # Define model
 class Linear(nn.Module):
@@ -56,7 +58,8 @@ state = TrainState.create(
 )
 
 # training loop
-total_steps = 10_000
+total_samples = 32 * 100
+total_steps = total_samples // batch_size
 
 checkpoint_schedule = ciclo.every(steps=1000)
 checkpoint = ciclo.checkpoint(f"logdir/mnist_simple/{int(time())}")

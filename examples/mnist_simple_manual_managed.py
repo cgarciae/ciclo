@@ -55,10 +55,10 @@ state = managed.ManagedState.create(
 )
 
 # training loop
-total_samples = 32 * 10_000
+total_samples = 32 * 100
 total_steps = total_samples // batch_size
 
-checkpoint_schedule = ciclo.every(1000)
+checkpoint_schedule = ciclo.every(total_steps // 10)
 checkpoint = ciclo.checkpoint(f"logdir/mnist_simple/{int(time())}")
 keras_bar = ciclo.keras_bar(total=total_steps)
 end_period = ciclo.at(total_steps)

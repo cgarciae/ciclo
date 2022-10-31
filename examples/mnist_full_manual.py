@@ -14,9 +14,11 @@ from clu.metrics import Accuracy, Average, Collection
 from flax import struct
 from flax.training import train_state
 
+batch_size = 32
+
 # load the MNIST dataset
 ds_train: tf.data.Dataset = tfds.load("mnist", split="train", shuffle_files=True)
-ds_train = ds_train.repeat().shuffle(1024).batch(32).prefetch(1)
+ds_train = ds_train.repeat().shuffle(1024).batch(batch_size).prefetch(1)
 ds_valid: tf.data.Dataset = tfds.load("mnist", split="test")
 ds_valid = ds_valid.batch(32, drop_remainder=True).prefetch(1)
 
@@ -56,13 +58,13 @@ def train_step(state: TrainState, batch):
     (loss, logits), grads = jax.value_and_grad(loss_fn, has_aux=True)(state.params)
     state = state.apply_gradients(grads=grads)
     metrics = state.metrics.update(loss=loss, logits=logits, labels=batch["label"])
-    return None, state.replace(metrics=metrics)
+    return state.replace(metrics=metrics)
 
 
 @jax.jit
 def compute_metrics(state: TrainState):
     logs = state.metrics.compute()
-    return {"stateful_metrics": logs}, None
+    return {"stateful_metrics": logs}
 
 
 @jax.jit
@@ -77,7 +79,7 @@ def eval_step(state: TrainState, batch):
 
 
 def reset_metrics(state: TrainState):
-    return None, state.replace(metrics=state.metrics.empty())
+    return state.replace(metrics=state.metrics.empty())
 
 
 # Initialize state
@@ -91,9 +93,10 @@ state = TrainState.create(
 )
 
 # training loop
-total_steps = 10_000
-eval_steps = 1_000
-log_steps = 200
+total_samples = 32 * 100
+total_steps = total_samples // batch_size
+eval_steps = total_steps // 10
+log_steps = total_steps // 50
 
 checkpoint = ciclo.checkpoint(
     f"logdir/mnist_full/{int(time())}", monitor="accuracy_valid", mode="max"
@@ -110,18 +113,18 @@ history = ciclo.history()
 stop_iteration = False
 for elapsed, batch in ciclo.elapse(ds_train.as_numpy_iterator()):
     logs = ciclo.logs()
-    logs.updates, state = train_step(state, batch)
+    state = train_step(state, batch)
 
     if is_time_to_compute_metrics(elapsed):
-        logs.updates, _ = compute_metrics(state)
-        _, state = reset_metrics(state)
+        logs.updates = compute_metrics(state)
+        state = reset_metrics(state)
 
     if is_time_to_eval(elapsed):
         # --------------------
         # eval loop
         # --------------------
         eval_logs: ciclo.LogsLike = {}
-        _, eval_state = reset_metrics(state)
+        eval_state = reset_metrics(state)
         for eval_batch in ds_valid.as_numpy_iterator():
             eval_logs, eval_state = eval_step(eval_state, eval_batch)
         # --------------------

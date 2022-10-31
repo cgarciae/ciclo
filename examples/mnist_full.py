@@ -14,9 +14,11 @@ from clu.metrics import Accuracy, Average, Collection
 from flax import struct
 from flax.training import train_state
 
+batch_size = 32
+
 # load the MNIST dataset
 ds_train: tf.data.Dataset = tfds.load("mnist", split="train", shuffle_files=True)
-ds_train = ds_train.repeat().shuffle(1024).batch(32).prefetch(1)
+ds_train = ds_train.repeat().shuffle(1024).batch(batch_size).prefetch(1)
 ds_valid: tf.data.Dataset = tfds.load("mnist", split="test")
 ds_valid = ds_valid.batch(32, drop_remainder=True).prefetch(1)
 
@@ -91,9 +93,10 @@ state = TrainState.create(
 )
 
 # training loop
-total_steps = 10_000
-eval_steps = 1_000
-log_steps = 200
+total_samples = 32 * 100
+total_steps = total_samples // batch_size
+eval_steps = total_steps // 10
+log_steps = total_steps // 50
 state, history, _ = ciclo.loop(
     state,
     ds_train.as_numpy_iterator(),

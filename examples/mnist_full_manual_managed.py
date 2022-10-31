@@ -73,7 +73,7 @@ eval_step = managed.step(loss_fn)
 
 @managed.step
 def reset_metrics(state: ManagedState):
-    return None, state.replace(
+    return state.replace(
         accuracy=Accuracy.empty(),
         loss=AverageLoss.empty(),
     )
@@ -92,7 +92,7 @@ state = ManagedState.create(
 )
 
 # training loop
-total_samples = 32 * 10_000
+total_samples = 32 * 100
 total_steps = total_samples // batch_size
 eval_steps = total_steps // 10
 

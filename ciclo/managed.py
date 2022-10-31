@@ -68,7 +68,7 @@ ManagedCallbackCallable = Callable[[Batch, S, Broadcasts, Statics], CallbackOutp
 
 @runtime_checkable
 class ManagedCallback(Protocol, Generic[S]):
-    def managed_callback(
+    def __managed_callback__(
         self, state: S, batch: Batch, broadcast: Broadcasts, statics: Statics
     ) -> CallbackOutput[S]:
         ...
@@ -81,7 +81,7 @@ class ManagedCallback(Protocol, Generic[S]):
 class ManagedFunctionCallback(ManagedCallback[S]):
     f: Callable[..., FunctionCallbackOutputs[S]]
 
-    def managed_callback(
+    def __managed_callback__(
         self, state: S, batch: Batch, broadcast: Broadcasts, statics: Statics
     ) -> CallbackOutput[S]:
         outputs = inject(self.f, state, batch, broadcast, statics)
@@ -197,7 +197,7 @@ class ManagedStep(LoopCallbackBase[S]):
         return lifted_postprocess
 
     def get_step_callback(self, strategy: Strategy) -> ManagedCallbackCallable[S]:
-        return self.managed_step_fn.managed_callback
+        return self.managed_step_fn.__managed_callback__
 
     def __loop_callback__(self, loop_state: LoopState[S]) -> CallbackOutput[S]:
         logs, state = self(loop_state.state, loop_state.batch, loop_state.elapsed, None)
@@ -212,7 +212,7 @@ class ManagedTrainStep(ManagedStep[S]):
         ) -> CallbackOutput[S]:
             def loss_fn(params):
                 _state = state.replace(params=params)
-                logs, _state = self.managed_step_fn.managed_callback(
+                logs, _state = self.managed_step_fn.__managed_callback__(
                     _state, batch, broadcasts, statics
                 )
                 if "losses" not in logs:
