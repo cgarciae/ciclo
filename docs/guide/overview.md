@@ -1,8 +1,6 @@
 # Ciclo
 _Training loop utilities and abstractions for the JAX ecosystem_
 
-`ciclo` is a library for training loops in JAX. It provides a set of utilities and abstractions to build complex training loops and higher-level JAX frameworks.
-
 **Main Features**
 
 ✔️ Training utilities <br>
@@ -10,12 +8,6 @@ _Training loop utilities and abstractions for the JAX ecosystem_
 🧪 Managed API (Distributed Strategies) <br>
 💡 Predefined Loops (e.g. `fit`) <br>
 💡 Framework support <br>
-
-<details><summary><b>Why Ciclo?</b></summary>
-
-There is currently a disconnect between research code that often benefits from having complete control over the training loop, and higher-level frameworks like Elegy that provide user-friendly APIs but are limited in their expressiveness. `ciclo` aims to provide a minimal set of low-level training loop utilities and abstractions that compose into higher-level APIs. It proposes a bottom-up design allows users to choose their desired level of abstraction.
-
-</details>
 
 ---
   
@@ -33,10 +25,10 @@ There is currently a disconnect between research code that often benefits from h
 ```python
 end_period = ciclo.at(steps=10_000) # {steps, samples, time}
 
-for elapsed, batch in ciclo.elapse(dataset):
-    # Elapsed(steps=..., samples=..., time=...)
-    if elapsed >= end_period:
-        break
+for elapsed, batch in ciclo.elapse(dataset): # track steps/samples/time
+# elapsed = Elapsed(steps=..., samples=..., time=...)
+if elapsed >= end_period:
+    break
 ```
 
 ### Schedules
@@ -48,7 +40,7 @@ eval_period = ciclo.every(steps=1000) # {steps, samples, time}
 for elapsed, batch in ciclo.elapse(dataset):
 
     if eval_period(elapsed):
-        # eval code
+        # evaluate model here
 ```
 
 
@@ -77,7 +69,7 @@ for elapsed, batch in ciclo.elapse(dataset):
 def train_step(state: TrainState, batch):
     ...
     logs = ciclo.logs()
-    logs.add_loss("loss": loss)
+    logs.add_metric("loss": loss)
     logs.add_metric("accuracy": jnp.mean(jnp.argmax(logits, -1) == labels))
     return logs, state
 ```
@@ -91,8 +83,8 @@ for elapsed, batch in ciclo.elapse(dataset):
     logs.updates, state = train_step(state, batch)
     # commit logs
     history.commit(elapsed, logs)
-# collect log values (e.g. for plotting)
-steps, loss, accuracy = history.collect("steps", "loss", "accuracy")
+# collect log values e.g. for plotting
+steps, loss, accuracy = history.collect("steps", "loss", "accuracy)
 ```
 
 
@@ -215,3 +207,7 @@ class LoopState:
     stop_iteration: bool
   
 ```
+
+
+
+

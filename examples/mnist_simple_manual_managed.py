@@ -77,8 +77,6 @@ for elapsed, batch in ciclo.elapse(ds_train.as_numpy_iterator()):
 # plot the training history
 steps, loss, accuracy = history.collect("steps", "metrics.loss", "accuracy")
 
-# %%
-# use subplots to plot loss and accuracy on the same figure
 fig, axs = plt.subplots(1, 2)
 axs[0].plot(steps, loss)
 axs[0].set_title("Loss")

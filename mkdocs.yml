@@ -1,0 +1,22 @@
+site_name: Ciclo
+
+nav:
+- Ciclo: index.md
+
+theme:
+  name: material
+
+markdown_extensions:
+- pymdownx.arithmatex
+- admonition
+- codehilite:
+    guess_lang: false
+    use_pygments: true
+    noclasses: true
+    pygments_style: default
+
+plugins:
+  - mkdocs-jupyter
+
+extra_css:
+  - style.css

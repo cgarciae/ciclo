@@ -77,7 +77,7 @@ state, history, _ = ciclo.loop(
 # plot the training history
 steps, loss, accuracy = history.collect("steps", "loss", "accuracy")
 
-# use subplots to plot loss and accuracy on the same figure
+
 fig, axs = plt.subplots(1, 2)
 axs[0].plot(steps, loss)
 axs[0].set_title("Loss")
