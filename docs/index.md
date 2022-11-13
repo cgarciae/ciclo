@@ -3,7 +3,7 @@ _Training loop utilities and abstractions for the JAX ecosystem_
 
 `ciclo` is a library for training loops in JAX. It provides a set of utilities and abstractions to build complex training loops and higher-level JAX frameworks.
 
-**Main Features**
+**Features**
 
 ✔️ Training utilities <br>
 ✔️ Loop language <br>
@@ -161,7 +161,9 @@ def loop(
     stop=ciclo.at(steps=total_steps)
   )
 ```
-**Sugar**
+
+<details><summary>Syntactic Sugar</summary>
+
 ```python
 
   total_steps = 10_000
@@ -178,6 +180,8 @@ def loop(
   )
 ```
 
+</details>
+
 ### Loop function callbacks
   
 ```python
@@ -187,31 +191,8 @@ def f(
 ```
 Where:
 
-* logs: `LogsLike = Dict[str, Dict[str, Any]]`
 * state: `Any`, cannot be `tuple` or `dict` for single return value
-
-
-### Loop callbacks
-  
-```python
-
-class LoopCallback(Protocol):
-    __loop_callback__: LoopState -> Tuple[LogsLike, State]
-```
-
-
-### LoopState
-  
-```python
-  
-class LoopState:
-    state: State
-    batch: Batch
-    history: History
-    elapsed: Elapsed
-    logs: Logs
-    accumulated_logs: Logs
-    metadata: Any
-    stop_iteration: bool
-  
-```
+* batch: `Any`, current batch
+* elapsed: `Elapsed`, current elapsed steps/samples/time, jit-able
+* loop_state: `LoopState`, contains information about the current loop state, not jit-able
+* logs: `LogsLike = Dict[str, Dict[str, Any]]`

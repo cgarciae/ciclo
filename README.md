@@ -1,9 +1,9 @@
 # Ciclo
-_Training loop utilities and abstractions for the JAX ecosystem_
+_Training loop utilities and abstractions for JAX_
 
-`ciclo` is a library for training loops in JAX. It provides a set of utilities and abstractions to build complex training loops and higher-level JAX frameworks.
+`ciclo` is a library for training loops in JAX. It provides a set of utilities and abstractions to build complex training loops and higher-level frameworks.
 
-**Main Features**
+**Features**
 
 ✔️ Training utilities <br>
 ✔️ Loop language <br>
@@ -13,7 +13,13 @@ _Training loop utilities and abstractions for the JAX ecosystem_
 
 <details><summary><b>Why Ciclo?</b></summary>
 
-There is currently a disconnect between research code that often benefits from having complete control over the training loop, and higher-level frameworks like Elegy that provide user-friendly APIs but are limited in their expressiveness. `ciclo` aims to provide a minimal set of low-level training loop utilities and abstractions that compose into higher-level APIs. It proposes a bottom-up design allows users to choose their desired level of abstraction.
+* In JAX functions are first-class citizens, instead of monolithic classes like `Model` or `Trainer` in other frameworks, there is a lot of benefit in a functional API for the training interface as well.
+* The JAX community is very focused on research, and as such there is a lot of interest in flexibility and control over the training loop. For this reason, `ciclo` provides some basic utilities and lets the user choose their desired level of abstraction.
+
+**Comparison with other libraries**
+
+* What about Elegy? Ciclo can be seen as the next version of Elegy that is built with better foundations. While Elegy started with a very rigid high-level API and gradually added more flexibility, Ciclo starts with low-level utilities and gradually adds more abstraction.
+* What about `clu`? Ciclo took from inspiration from `clu` and rather than compete with it, Ciclo aims to complement it. At the lowest level they both compose by virtue of just providing utilities that work with JAX, however, whenever possible Ciclo's abstractions provide support for `clu`'s utilities e.g. `loop` supports `clu`'s `PeriodicAction`s.
 
 </details>
 
@@ -74,7 +80,7 @@ for elapsed, batch in ciclo.elapse(dataset):
 
 ```python
 @jax.jit
-def train_step(state: TrainState, batch):
+def train_step(state, batch):
     ...
     logs = ciclo.logs()
     logs.add_loss("loss": loss)
@@ -96,9 +102,7 @@ steps, loss, accuracy = history.collect("steps", "loss", "accuracy")
 ```
 
 
-### Complete Example
-
-<details><summary>Example</summary>
+<details><summary>Complete Example</summary>
 
 ```python
 @jax.jit
@@ -131,13 +135,12 @@ for elapsed, batch in ciclo.elapse(dataset):
 steps, loss, accuracy = history.collect("steps", "loss", "accuracy")
 ```
 
-</details>
+</details><br>
 
 ---
 
 ## Loop language
   
-### Loop
 ```python
 def loop(
     state: State,
@@ -148,20 +151,29 @@ def loop(
   
 ```python
 
-  total_steps = 10_000
-  
-  state, history, elapsed = ciclo.loop(
+total_steps = 10_000
+
+state, history, elapsed = ciclo.loop(
     state,
     dataset,
     {
-      ciclo.every(1): [train_step],
-      ciclo.every(steps=1000): [ciclo.checkpoint(f"logdir/my-model")],
-      ciclo.every(1): [ciclo.keras_bar(total=total_steps)],
+        ciclo.every(1): [train_step],
+        ciclo.every(steps=1000): [ciclo.checkpoint(f"logdir/my-model")],
+        ciclo.every(1): [ciclo.keras_bar(total=total_steps)],
     },
     stop=ciclo.at(steps=total_steps)
-  )
+)
 ```
-**Sugar**
+
+<details><summary>Syntactic Sugar</summary>
+
+If you have a single callback for a given schedule you can pass it directly. Furthermore, for `CallbackBase` instances (all callbacks in Ciclo implement this) that need to be run at every iteration, you can avoid having to specify the schedule by using the Mapping expansion `'**'` operator.
+
+| Syntax | Expansion |
+| --- | --- |
+| `schedule: callback` | `schedule: [callback]` |
+| `**callback` | `every(1): [callback]` |
+
 ```python
 
   total_steps = 10_000
@@ -178,6 +190,8 @@ def loop(
   )
 ```
 
+</details><br>
+
 ### Loop function callbacks
   
 ```python
@@ -187,31 +201,8 @@ def f(
 ```
 Where:
 
-* logs: `LogsLike = Dict[str, Dict[str, Any]]`
 * state: `Any`, cannot be `tuple` or `dict` for single return value
-
-
-### Loop callbacks
-  
-```python
-
-class LoopCallback(Protocol):
-    __loop_callback__: LoopState -> Tuple[LogsLike, State]
-```
-
-
-### LoopState
-  
-```python
-  
-class LoopState:
-    state: State
-    batch: Batch
-    history: History
-    elapsed: Elapsed
-    logs: Logs
-    accumulated_logs: Logs
-    metadata: Any
-    stop_iteration: bool
-  
-```
+* batch: `Any`, current batch
+* elapsed: `Elapsed`, current elapsed steps/samples/time, jit-able
+* loop_state: `LoopState`, contains information about the current loop state, not jit-able
+* logs: `LogsLike = Dict[str, Dict[str, Any]]`

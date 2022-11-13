@@ -1,7 +1,8 @@
 site_name: Ciclo
 
 nav:
-- Ciclo: index.md
+- Overview: index.md
+- Getting Started: getting_started.ipynb
 
 theme:
   name: material
