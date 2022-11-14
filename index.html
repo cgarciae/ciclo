@@ -184,6 +184,13 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#installation" class="md-nav__link">
+    Installation
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#training-utilities" class="md-nav__link">
     Training utilities
   </a>
@@ -219,13 +226,6 @@
   
 </li>
         
-          <li class="md-nav__item">
-  <a href="#complete-example" class="md-nav__link">
-    Complete Example
-  </a>
-  
-</li>
-        
       </ul>
     </nav>
   
@@ -238,13 +238,6 @@
   
     <nav class="md-nav" aria-label="Loop language">
       <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#loop" class="md-nav__link">
-    Loop
-  </a>
-  
-</li>
         
           <li class="md-nav__item">
   <a href="#loop-function-callbacks" class="md-nav__link">
@@ -308,6 +301,13 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#installation" class="md-nav__link">
+    Installation
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#training-utilities" class="md-nav__link">
     Training utilities
   </a>
@@ -343,13 +343,6 @@
   
 </li>
         
-          <li class="md-nav__item">
-  <a href="#complete-example" class="md-nav__link">
-    Complete Example
-  </a>
-  
-</li>
-        
       </ul>
     </nav>
   
@@ -362,13 +355,6 @@
   
     <nav class="md-nav" aria-label="Loop language">
       <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#loop" class="md-nav__link">
-    Loop
-  </a>
-  
-</li>
         
           <li class="md-nav__item">
   <a href="#loop-function-callbacks" class="md-nav__link">
@@ -398,8 +384,8 @@
 
 
 <h1 id="ciclo">Ciclo</h1>
-<p><em>Training loop utilities and abstractions for the JAX ecosystem</em></p>
-<p><code>ciclo</code> is a library for training loops in JAX. It provides a set of utilities and abstractions to build complex training loops and higher-level JAX frameworks.</p>
+<p><em>Training loop utilities and abstractions for JAX</em></p>
+<p><code>ciclo</code> is a library for training loops in JAX. It provides a set of utilities and abstractions to build complex training loops and higher-level frameworks.</p>
 <p><strong>Features</strong></p>
 <p>✔️ Training utilities <br>
 ✔️ Loop language <br>
@@ -408,9 +394,19 @@
 💡 Framework support <br></p>
 <details><summary><b>Why Ciclo?</b></summary>
 
-There is currently a disconnect between research code that often benefits from having complete control over the training loop, and higher-level frameworks like Elegy that provide user-friendly APIs but are limited in their expressiveness. `ciclo` aims to provide a minimal set of low-level training loop utilities and abstractions that compose into higher-level APIs. It proposes a bottom-up design allows users to choose their desired level of abstraction.
+* In JAX functions are first-class citizens, instead of monolithic classes like `Model` or `Trainer` in other frameworks, there is a lot of benefit in a functional API for the training interface as well.
+* The JAX community is very focused on research, and as such there is a lot of interest in flexibility and control over the training loop. For this reason, `ciclo` provides some basic utilities and lets the user choose their desired level of abstraction.
+
+**Comparison with other libraries**
+
+* What about Elegy? Ciclo can be seen as the next version of Elegy that is built with better foundations. While Elegy started with a very rigid high-level API and gradually added more flexibility, Ciclo starts with low-level utilities and gradually adds more abstraction.
+* What about `clu`? Ciclo took from inspiration from `clu` and rather than compete with it, Ciclo aims to complement it. At the lowest level they both compose by virtue of just providing utilities that work with JAX, however, whenever possible Ciclo's abstractions provide support for `clu`'s utilities e.g. `loop` supports `clu`'s `PeriodicAction`s.
 
 </details>
+
+<h3 id="installation">Installation</h3>
+<div class="codehilite" style="background: #f8f8f8"><pre style="line-height: 125%;"><span></span><code>pip install ciclo
+</code></pre></div>
 
 <hr />
 <h2 id="training-utilities">Training utilities</h2>
@@ -454,7 +450,7 @@ keras_bar <span style="color: #666666">=</span> ciclo<span style="color: #666666
 
 <h3 id="logging">Logging</h3>
 <div class="codehilite" style="background: #f8f8f8"><pre style="line-height: 125%;"><span></span><code><span style="color: #AA22FF">@jax</span><span style="color: #666666">.</span>jit
-<span style="color: #008000; font-weight: bold">def</span> <span style="color: #0000FF">train_step</span>(state: TrainState, batch):
+<span style="color: #008000; font-weight: bold">def</span> <span style="color: #0000FF">train_step</span>(state, batch):
     <span style="color: #666666">...</span>
     logs <span style="color: #666666">=</span> ciclo<span style="color: #666666">.</span>logs()
     logs<span style="color: #666666">.</span>add_loss(<span style="color: #BA2121">&quot;loss&quot;</span>: loss)
@@ -474,8 +470,7 @@ keras_bar <span style="color: #666666">=</span> ciclo<span style="color: #666666
 steps, loss, accuracy <span style="color: #666666">=</span> history<span style="color: #666666">.</span>collect(<span style="color: #BA2121">&quot;steps&quot;</span>, <span style="color: #BA2121">&quot;loss&quot;</span>, <span style="color: #BA2121">&quot;accuracy&quot;</span>)
 </code></pre></div>
 
-<h3 id="complete-example">Complete Example</h3>
-<details><summary>Example</summary>
+<details><summary>Complete Example</summary>
 
 
 <div class="codehilite" style="background: #f8f8f8"><pre style="line-height: 125%;"><span></span><code><span style="color: #AA22FF">@jax</span><span style="color: #666666">.</span>jit
@@ -511,10 +506,9 @@ steps, loss, accuracy <span style="color: #666666">=</span> history<span style="
 
 
 </details>
-
+<p><br></p>
 <hr />
 <h2 id="loop-language">Loop language</h2>
-<h3 id="loop">Loop</h3>
 <div class="codehilite" style="background: #f8f8f8"><pre style="line-height: 125%;"><span></span><code><span style="color: #008000; font-weight: bold">def</span> <span style="color: #0000FF">loop</span>(
     state: State,
     dataset: Iterable[Batch],
@@ -522,21 +516,28 @@ steps, loss, accuracy <span style="color: #666666">=</span> history<span style="
 ) <span style="color: #666666">-&gt;</span> (State, History, Elapsed)
 </code></pre></div>
 
-<div class="codehilite" style="background: #f8f8f8"><pre style="line-height: 125%;"><span></span><code>  total_steps <span style="color: #666666">=</span> <span style="color: #666666">10_000</span>
+<div class="codehilite" style="background: #f8f8f8"><pre style="line-height: 125%;"><span></span><code>total_steps <span style="color: #666666">=</span> <span style="color: #666666">10_000</span>
 
-  state, history, elapsed <span style="color: #666666">=</span> ciclo<span style="color: #666666">.</span>loop(
+state, history, elapsed <span style="color: #666666">=</span> ciclo<span style="color: #666666">.</span>loop(
     state,
     dataset,
     {
-      ciclo<span style="color: #666666">.</span>every(<span style="color: #666666">1</span>): [train_step],
-      ciclo<span style="color: #666666">.</span>every(steps<span style="color: #666666">=1000</span>): [ciclo<span style="color: #666666">.</span>checkpoint(<span style="color: #BA2121">f&quot;logdir/my-model&quot;</span>)],
-      ciclo<span style="color: #666666">.</span>every(<span style="color: #666666">1</span>): [ciclo<span style="color: #666666">.</span>keras_bar(total<span style="color: #666666">=</span>total_steps)],
+        ciclo<span style="color: #666666">.</span>every(<span style="color: #666666">1</span>): [train_step],
+        ciclo<span style="color: #666666">.</span>every(steps<span style="color: #666666">=1000</span>): [ciclo<span style="color: #666666">.</span>checkpoint(<span style="color: #BA2121">f&quot;logdir/my-model&quot;</span>)],
+        ciclo<span style="color: #666666">.</span>every(<span style="color: #666666">1</span>): [ciclo<span style="color: #666666">.</span>keras_bar(total<span style="color: #666666">=</span>total_steps)],
     },
     stop<span style="color: #666666">=</span>ciclo<span style="color: #666666">.</span>at(steps<span style="color: #666666">=</span>total_steps)
-  )
+)
 </code></pre></div>
 
 <details><summary>Syntactic Sugar</summary>
+
+If you have a single callback for a given schedule you can pass it directly. Furthermore, for `CallbackBase` instances (all callbacks in Ciclo implement this) that need to be run at every iteration, you can avoid having to specify the schedule by using the Mapping expansion `'**'` operator.
+
+| Syntax | Expansion |
+| --- | --- |
+| `schedule: callback` | `schedule: [callback]` |
+| `**callback` | `every(1): [callback]` |
 
 
 <div class="codehilite" style="background: #f8f8f8"><pre style="line-height: 125%;"><span></span><code>  total_steps <span style="color: #666666">=</span> <span style="color: #666666">10_000</span>
@@ -556,7 +557,7 @@ steps, loss, accuracy <span style="color: #666666">=</span> history<span style="
 
 
 </details>
-
+<p><br></p>
 <h3 id="loop-function-callbacks">Loop function callbacks</h3>
 <div class="codehilite" style="background: #f8f8f8"><pre style="line-height: 125%;"><span></span><code><span style="color: #008000; font-weight: bold">def</span> <span style="color: #0000FF">f</span>(
     [state, batch, elapsed, loop_state] <span style="color: #3D7B7B; font-style: italic"># accept between 0 and 4 args</span>
