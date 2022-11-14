@@ -97,7 +97,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Ciclo
+              Overview
             
           </span>
         </div>
@@ -160,12 +160,12 @@
       
       
         <label class="md-nav__link md-nav__link--active" for="__toc">
-          Ciclo
+          Overview
           <span class="md-nav__icon md-icon"></span>
         </label>
       
       <a href="." class="md-nav__link md-nav__link--active">
-        Ciclo
+        Overview
       </a>
       
         
@@ -253,20 +253,6 @@
   
 </li>
         
-          <li class="md-nav__item">
-  <a href="#loop-callbacks" class="md-nav__link">
-    Loop callbacks
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#loopstate" class="md-nav__link">
-    LoopState
-  </a>
-  
-</li>
-        
       </ul>
     </nav>
   
@@ -276,6 +262,21 @@
   
 </nav>
       
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="getting_started/" class="md-nav__link">
+        Getting Started
+      </a>
     </li>
   
 
@@ -376,20 +377,6 @@
   
 </li>
         
-          <li class="md-nav__item">
-  <a href="#loop-callbacks" class="md-nav__link">
-    Loop callbacks
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#loopstate" class="md-nav__link">
-    LoopState
-  </a>
-  
-</li>
-        
       </ul>
     </nav>
   
@@ -413,7 +400,7 @@
 <h1 id="ciclo">Ciclo</h1>
 <p><em>Training loop utilities and abstractions for the JAX ecosystem</em></p>
 <p><code>ciclo</code> is a library for training loops in JAX. It provides a set of utilities and abstractions to build complex training loops and higher-level JAX frameworks.</p>
-<p><strong>Main Features</strong></p>
+<p><strong>Features</strong></p>
 <p>✔️ Training utilities <br>
 ✔️ Loop language <br>
 🧪 Managed API (Distributed Strategies) <br>
@@ -549,7 +536,9 @@ steps, loss, accuracy <span style="color: #666666">=</span> history<span style="
   )
 </code></pre></div>
 
-<p><strong>Sugar</strong></p>
+<details><summary>Syntactic Sugar</summary>
+
+
 <div class="codehilite" style="background: #f8f8f8"><pre style="line-height: 125%;"><span></span><code>  total_steps <span style="color: #666666">=</span> <span style="color: #666666">10_000</span>
 
   state, history, elapsed <span style="color: #666666">=</span> ciclo<span style="color: #666666">.</span>loop(
@@ -564,6 +553,10 @@ steps, loss, accuracy <span style="color: #666666">=</span> history<span style="
   )
 </code></pre></div>
 
+
+
+</details>
+
 <h3 id="loop-function-callbacks">Loop function callbacks</h3>
 <div class="codehilite" style="background: #f8f8f8"><pre style="line-height: 125%;"><span></span><code><span style="color: #008000; font-weight: bold">def</span> <span style="color: #0000FF">f</span>(
     [state, batch, elapsed, loop_state] <span style="color: #3D7B7B; font-style: italic"># accept between 0 and 4 args</span>
@@ -572,25 +565,12 @@ steps, loss, accuracy <span style="color: #666666">=</span> history<span style="
 
 <p>Where:</p>
 <ul>
-<li>logs: <code>LogsLike = Dict[str, Dict[str, Any]]</code></li>
 <li>state: <code>Any</code>, cannot be <code>tuple</code> or <code>dict</code> for single return value</li>
+<li>batch: <code>Any</code>, current batch</li>
+<li>elapsed: <code>Elapsed</code>, current elapsed steps/samples/time, jit-able</li>
+<li>loop_state: <code>LoopState</code>, contains information about the current loop state, not jit-able</li>
+<li>logs: <code>LogsLike = Dict[str, Dict[str, Any]]</code></li>
 </ul>
-<h3 id="loop-callbacks">Loop callbacks</h3>
-<div class="codehilite" style="background: #f8f8f8"><pre style="line-height: 125%;"><span></span><code><span style="color: #008000; font-weight: bold">class</span> <span style="color: #0000FF; font-weight: bold">LoopCallback</span>(Protocol):
-    __loop_callback__: LoopState <span style="color: #666666">-&gt;</span> Tuple[LogsLike, State]
-</code></pre></div>
-
-<h3 id="loopstate">LoopState</h3>
-<div class="codehilite" style="background: #f8f8f8"><pre style="line-height: 125%;"><span></span><code><span style="color: #008000; font-weight: bold">class</span> <span style="color: #0000FF; font-weight: bold">LoopState</span>:
-    state: State
-    batch: Batch
-    history: History
-    elapsed: Elapsed
-    logs: Logs
-    accumulated_logs: Logs
-    metadata: Any
-    stop_iteration: <span style="color: #008000">bool</span>
-</code></pre></div>
 
 
 
@@ -606,6 +586,27 @@ steps, loss, accuracy <span style="color: #666666">=</span> history<span style="
       </main>
       
         <footer class="md-footer">
+  
+    
+    <nav class="md-footer__inner md-grid" aria-label="Footer" >
+      
+      
+        
+        <a href="getting_started/" class="md-footer__link md-footer__link--next" aria-label="Next: Getting Started" rel="next">
+          <div class="md-footer__title">
+            <div class="md-ellipsis">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              Getting Started
+            </div>
+          </div>
+          <div class="md-footer__button md-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11H4Z"/></svg>
+          </div>
+        </a>
+      
+    </nav>
   
   <div class="md-footer-meta md-typeset">
     <div class="md-footer-meta__inner md-grid">
