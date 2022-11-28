@@ -462,9 +462,8 @@ class wandb_logger(LoopCallbackBase[S]):
     def __call__(self, elapsed: Elapsed, logs: LogsLike) -> None:
         data = {}
         for collection, collection_logs in logs.items():
-            if collection == "elapsed":
-                continue
-            for key, value in collection_logs:
+
+            for key, value in collection_logs.items():
                 if is_scalar(value):
                     if key in data:
                         key = f"{collection}.{key}"

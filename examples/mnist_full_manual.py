@@ -120,11 +120,7 @@ for elapsed, batch in ciclo.elapse(ds_train.as_numpy_iterator()):
         state = reset_metrics(state)
 
     if is_time_to_eval(elapsed):
-        # --------------------
-        # eval loop
-        # --------------------
-        eval_logs: ciclo.LogsLike = {}
-        eval_state = reset_metrics(state)
+
         for eval_batch in ds_valid.as_numpy_iterator():
             eval_logs, eval_state = eval_step(eval_state, eval_batch)
         # --------------------

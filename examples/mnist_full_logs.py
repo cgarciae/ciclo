@@ -68,7 +68,7 @@ def compute_metrics(state: TrainState):
 
 
 @jax.jit
-def eval_step(state: TrainState, batch, _):
+def eval_step(state: TrainState, batch):
     logits = state.apply_fn({"params": state.params}, batch["image"])
     loss = optax.softmax_cross_entropy_with_integer_labels(
         logits=logits, labels=batch["label"]

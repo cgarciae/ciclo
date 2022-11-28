@@ -28,7 +28,6 @@ from flax.training import train_state
 from typing_extensions import Protocol, runtime_checkable
 from ciclo.api import (
     Broadcasts,
-    LoopCallback,
     LoopCallbackBase,
     CallbackOutput,
     Elapsed,
@@ -97,7 +96,6 @@ class ManagedState(train_state.TrainState):
     """
     A train state that manages the strategy.
     """
-
     strategy: "Strategy" = struct.field(pytree_node=False)
 
     @classmethod
@@ -252,7 +250,7 @@ class ManagedTrainStep(ManagedStep[S]):
 
 
 def train_step(
-    step_fn: Callable[..., FunctionCallbackOutputs[S]],
+    step_fn: Callable[..., Any],
     strategy: Union[Strategy, str] = "jit",
 ) -> ManagedTrainStep[S]:
     strategy = get_strategy(strategy) if isinstance(strategy, str) else strategy
@@ -264,7 +262,7 @@ def train_step(
 
 
 def step(
-    step_fn: Callable[..., FunctionCallbackOutputs[S]],
+    step_fn: Callable[..., Any],
     strategy: Union[Strategy, str] = "jit",
 ) -> ManagedStep[S]:
     strategy = get_strategy(strategy) if isinstance(strategy, str) else strategy

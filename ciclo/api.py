@@ -406,13 +406,15 @@ def to_standard_outputs(
     return logs, state
 
 
-class LoopCallbackBase(LoopCallback[S]):
+class LoopElement:
     def keys(self) -> List[Schedule]:
         return [ciclo.every(1)]
 
-    def __getitem__(self, key: Schedule) -> List[LoopCallback[S]]:
+    def __getitem__(self: A, key: Schedule) -> List[A]:
         return [self]
 
+
+class LoopCallbackBase(LoopCallback[S], LoopElement):
     @abstractmethod
     def __loop_callback__(self, loop_state: LoopState[S]) -> CallbackOutput[S]:
         ...
@@ -431,6 +433,8 @@ class LoopFunctionCallback(LoopCallbackBase[S]):
 
 def inject(f: Callable[..., A], *args) -> A:
     n_args = len(inspect.getfullargspec(f).args)
+    if inspect.ismethod(f) or inspect.ismethod(f.__call__):
+        n_args -= 1
     return f(*args[:n_args])
 
 
