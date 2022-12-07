@@ -83,7 +83,7 @@ class ManagedFunctionCallback(ManagedCallback[S]):
     def __managed_callback__(
         self, state: S, batch: Batch, broadcast: Broadcasts, statics: Statics
     ) -> CallbackOutput[S]:
-        outputs = inject(self.f, state, batch, broadcast, statics)
+        outputs = inject(self.f)(state, batch, broadcast, statics)
         return to_standard_outputs(outputs, state)
 
     def get_function_with_input_signature(
@@ -96,6 +96,7 @@ class ManagedState(train_state.TrainState):
     """
     A train state that manages the strategy.
     """
+
     strategy: "Strategy" = struct.field(pytree_node=False)
 
     @classmethod
@@ -117,7 +118,7 @@ class ManagedState(train_state.TrainState):
         )
         return state.with_strategy(strategy)
 
-    def with_strategy(self, strategy: Union[Strategy, str]) -> "ManagedState":
+    def with_strategy(self: S, strategy: Union[Strategy, str]) -> S:
         new_strategy = get_strategy(strategy) if isinstance(strategy, str) else strategy
         current_strategy = self.strategy
         if new_strategy == current_strategy:

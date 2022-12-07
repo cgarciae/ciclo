@@ -250,6 +250,10 @@ class Logs(LogsLike):
     # ----------------------------------
     # history behavior
     # ----------------------------------
+    @property
+    def entry(self) -> "LogEntry":
+        return LogEntry(self)
+
     def subkey_value(self, key: str) -> Any:
         path = self.subkey_path(key)
         if path is None:
@@ -317,6 +321,14 @@ class Logs(LogsLike):
                     self[name] = dict(updates)
                 else:
                     self[name] = updates
+
+
+@dataclass(frozen=True)
+class LogEntry:
+    logs: Logs
+
+    def __getitem__(self, key: str) -> Any:
+        return self.logs[key]
 
 
 def _logs_tree_flatten(self):
@@ -425,17 +437,20 @@ class LoopFunctionCallback(LoopCallbackBase[S]):
     f: Callable[..., FunctionCallbackOutputs[S]]
 
     def __loop_callback__(self, loop_state: LoopState[S]) -> CallbackOutput[S]:
-        outputs = inject(
-            self.f, loop_state.state, loop_state.batch, loop_state.elapsed, loop_state
+        outputs = inject(self.f)(
+            loop_state.state, loop_state.batch, loop_state.elapsed, loop_state
         )
         return to_standard_outputs(outputs, loop_state.state)
 
 
-def inject(f: Callable[..., A], *args) -> A:
-    n_args = len(inspect.getfullargspec(f).args)
-    if inspect.ismethod(f) or inspect.ismethod(f.__call__):
-        n_args -= 1
-    return f(*args[:n_args])
+def inject(f: Callable[..., A]) -> Callable[..., A]:
+    def _inject(*args) -> A:
+        n_args = len(inspect.getfullargspec(f).args)
+        if inspect.ismethod(f) or inspect.ismethod(f.__call__):
+            n_args -= 1
+        return f(*args[:n_args])
+
+    return _inject
 
 
 # ---------------------------------------
