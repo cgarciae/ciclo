@@ -1,26 +1,22 @@
-from typing import Any, Dict
+from functools import partial
 import jax
 import jax.numpy as jnp
 
+print(jax.local_devices())
 
-x = jnp.array([1, 2, 3])
+d = jnp.array([1, 2, 3])
+t = (d, d)
+
+# t = jax.tree_map(jnp.array, t)
 
 
-@jax.vmap
-def g(x):
-    return x + 1
-
-
-@jax.jit
+@partial(jax.jit, donate_argnums=(0,))
 def f(x):
-    x = g(x)
-    return x * 2
+    return jax.tree_map(lambda x: x + 1, x)
 
 
-class A(Dict[str, Any]):
-    pass
+jnp.copy
 
+t = f(t)
 
-tree = A({"a": 1, "b": 2})
-
-print(jax.tree_map(lambda x: x + 1, tree))
+print(t)

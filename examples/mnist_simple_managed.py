@@ -65,4 +65,4 @@ state, history, _ = ciclo.loop(
     stop=ciclo.at(samples=total_samples),
 )
 
-print(history[0].subkey_value("logits").shape)
+print(history[0].entry_value("logits").shape)

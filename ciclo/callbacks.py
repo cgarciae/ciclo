@@ -153,7 +153,7 @@ class checkpoint(LoopCallbackBase[S]):
                 logs = Logs(logs)
 
             try:
-                value = logs.subkey_value(self.monitor)
+                value = logs.entry_value(self.monitor)
             except KeyError:
                 raise ValueError(f"Monitored value '{self.monitor}' not found in logs")
 
@@ -227,7 +227,7 @@ class early_stopping(LoopCallbackBase[S]):
             logs = Logs(logs)
 
         try:
-            value = logs.subkey_value(self.monitor)
+            value = logs.entry_value(self.monitor)
         except KeyError:
             raise ValueError(f"Monitored value '{self.monitor}' not found in logs")
 

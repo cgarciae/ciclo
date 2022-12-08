@@ -1,6 +1,6 @@
 import importlib.util
 import inspect
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import (
@@ -12,7 +12,6 @@ from typing import (
     List,
     Mapping,
     MutableMapping,
-    NamedTuple,
     Optional,
     Tuple,
     Type,
@@ -20,14 +19,13 @@ from typing import (
     Union,
     overload,
 )
-from typing_extensions import Protocol, runtime_checkable
 
 import jax
+import jax.numpy as jnp
+import numpy as np
 from flax import struct
-from flax.core import tracers
 from jax.tree_util import register_pytree_node
-from pkbar import Kbar
-from tqdm import tqdm
+from typing_extensions import Protocol, runtime_checkable
 
 import ciclo
 
@@ -201,7 +199,7 @@ class Logs(LogsLike):
     # ----------------------------------
     # logger behavior
     # ----------------------------------
-    def add(self, collection: str, key: str, value: Any) -> "Logs":
+    def add_entry(self, collection: str, name: str, value: Any) -> "Logs":
 
         if collection not in self:
             self[collection] = {}
@@ -213,70 +211,68 @@ class Logs(LogsLike):
                 f"Invalid collection '{collection}' of type '{type(mapping).__name__}', must be a MutableMapping"
             )
 
-        mapping[key] = value
+        mapping[name] = value
 
         return self
 
-    def add_many(self, collection: str, values: Dict[str, Any]) -> "Logs":
+    def add_entries(self, collection: str, values: Dict[str, Any]) -> "Logs":
 
-        for key, value in values.items():
-            self.add(collection, key, value)
+        for name, value in values.items():
+            self.add_entry(collection, name, value)
 
         return self
 
-    def add_metric(self, key: str, value: Any, *, stateful: bool = False) -> "Logs":
+    def add_metric(self, name: str, value: Any, *, stateful: bool = False) -> "Logs":
         if isinstance(value, Metric):
             stateful = True
         collection = "metrics" if not stateful else "stateful_metrics"
-        return self.add(collection, key, value)
+        return self.add_entry(collection, name, value)
 
     def add_metrics(self, metrics: Dict[str, Any], *, stateful: bool = False):
-        for key, value in metrics.items():
-            self.add_metric(key, value, stateful=stateful)
+        for name, value in metrics.items():
+            self.add_metric(name, value, stateful=stateful)
 
-    def add_loss(self, key: str, value: Any, *, add_metric: bool = False):
-        self.add("losses", key, value)
+    def add_loss(self, name: str, value: Any, *, add_metric: bool = False):
+        self.add_entry("losses", name, value)
         if add_metric:
-            self.add_metric(key, value)
+            self.add_metric(name, value)
 
     def add_losses(self, losses: Dict[str, Any], *, add_metrics: bool = False):
-        for key, value in losses.items():
-            self.add_loss(key, value, add_metric=add_metrics)
+        for name, value in losses.items():
+            self.add_loss(name, value, add_metric=add_metrics)
 
-    def add_output(self, key: str, value: Any, *, per_sample: bool = True):
+    def add_output(self, name: str, value: Any, *, per_sample: bool = True):
         collection = "per_sample_outputs" if per_sample else "outputs"
-        self.add(collection, key, value)
+        self.add_entry(collection, name, value)
 
     # ----------------------------------
     # history behavior
     # ----------------------------------
-    @property
-    def entry(self) -> "LogEntry":
-        return LogEntry(self)
 
-    def subkey_value(self, key: str) -> Any:
-        path = self.subkey_path(key)
+    def entry_value(self, name: str) -> Any:
+        path = self.entry_path(name)
         if path is None:
-            raise KeyError(f"Key {key} not found in logs.")
-        return self.path_value(path)
+            raise KeyError(f"Key {name} not found in logs.")
+        collection, name = path
+        return self[collection][name]
 
-    def subkey_path(self, key: str) -> Optional[LogPath]:
-        path = key.split(".")
+    def entry_path(self, name: str) -> Optional[LogPath]:
+        path = name.split(".")
 
         if len(path) == 1:
-            key = path[0]
-            collection = self.subkey_collection(key)
+            name = path[0]
+            collection = self.entry_collection(name)
             if collection is None:
                 return None
         elif len(path) == 2:
-            collection, key = path
+            collection, name = path
         else:
-            raise ValueError(f"Got more than 2 levels of nesting in key '{key}'")
+            raise ValueError(f"Got more than 2 levels of nesting in key '{name}'")
 
-        return collection, key
+        return collection, name
 
-    def subkey_collection(self, key: str) -> Optional[str]:
-        collections = [col for col in self if key in self[col]]
+    def entry_collection(self, name: str) -> Optional[str]:
+        collections = [col for col in self if name in self[col]]
 
         if len(collections) == 0:
             return None
@@ -284,51 +280,39 @@ class Logs(LogsLike):
             return collections[0]
         else:
             raise ValueError(
-                f"Found multiple collections for key '{key}' : {collections}. "
-                "Use `collection.key` syntax."
+                f"Found multiple collections for name '{name}' : {collections}. "
+                "Use `collection.name` syntax."
             )
 
-    def path_value(self, path: LogPath) -> Any:
-        collection, key = path
-        return self[collection][key]
-
     def merge(self, collection_updates: LogsLike):
-        for name, updates in collection_updates.items():
+        for collection, updates in collection_updates.items():
             if not isinstance(updates, Mapping):
                 raise ValueError(
-                    f"Invalide value '{updates}' for collection '{name}', value must be a Mapping"
+                    f"Invalide value '{updates}' for collection '{collection}', value must be a Mapping"
                 )
-            if name in self:
-                collection = self[name]
-                if isinstance(collection, MutableMapping):
-                    collection.update(updates)
-                elif isinstance(collection, Mapping):
-                    if type(collection) != type(updates):
+            if collection in self:
+                entries = self[collection]
+                if isinstance(entries, MutableMapping):
+                    entries.update(updates)
+                elif isinstance(entries, Mapping):
+                    if type(entries) != type(updates):
                         raise ValueError(
-                            f"Cannot merge collections of different types: {type(collection)} and {type(updates)}"
+                            f"Cannot merge collections of different types: {type(entries)} and {type(updates)}"
                         )
-                    self[name] = updates
+                    self[collection] = updates
                 else:
                     raise ValueError(
-                        f"Invalid collection '{name}' of type '{type(collection).__name__}', must be a Mapping "
+                        f"Invalid collection '{collection}' of type '{type(entries).__name__}', must be a Mapping "
                         "or MutableMapping"
                     )
             else:
                 # NOTE: we copy mutable mappings to avoid side effects
                 if isinstance(updates, Dict):
-                    self[name] = updates.copy()
+                    self[collection] = updates.copy()
                 elif isinstance(updates, MutableMapping):
-                    self[name] = dict(updates)
+                    self[collection] = dict(updates)
                 else:
-                    self[name] = updates
-
-
-@dataclass(frozen=True)
-class LogEntry:
-    logs: Logs
-
-    def __getitem__(self, key: str) -> Any:
-        return self.logs[key]
+                    self[collection] = updates
 
 
 def _logs_tree_flatten(self):
@@ -362,15 +346,20 @@ class History(List[Logs]):
         keys = (key,) + keys
         outputs = tuple([] for _ in keys)
         for logs in self:
-            paths = [logs.subkey_path(key) for key in keys]
+            paths = [logs.entry_path(key) for key in keys]
             if all(path is not None for path in paths):
                 for i, path in enumerate(paths):
                     assert path is not None
-                    outputs[i].append(logs.path_value(path))
+                    collection, key = path
+                    outputs[i].append(logs[collection][key])
 
         return outputs if len(keys) > 1 else outputs[0]
 
     def commit(self, elapsed: Elapsed, logs: LogsLike):
+        # convert JAX arrays to numpy arrays to free memory
+        logs = jax.tree_map(
+            lambda x: np.asarray(x) if isinstance(x, jnp.ndarray) else x, logs
+        )
         if not isinstance(logs, Logs):
             logs = Logs(logs)
         logs["elapsed"] = elapsed

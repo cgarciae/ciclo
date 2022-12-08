@@ -72,10 +72,8 @@ class ManagedCallback(Protocol, Generic[S]):
     ) -> CallbackOutput[S]:
         ...
 
-    def get_function_with_input_signature(self) -> Callable:
-        ...
 
-
+# TODO: remove ManagedCallback protocol
 @dataclass(frozen=True)
 class ManagedFunctionCallback(ManagedCallback[S]):
     f: Callable[..., FunctionCallbackOutputs[S]]
@@ -85,11 +83,6 @@ class ManagedFunctionCallback(ManagedCallback[S]):
     ) -> CallbackOutput[S]:
         outputs = inject(self.f)(state, batch, broadcast, statics)
         return to_standard_outputs(outputs, state)
-
-    def get_function_with_input_signature(
-        self,
-    ) -> Callable[..., FunctionCallbackOutputs[S]]:
-        return self.f
 
 
 class ManagedState(train_state.TrainState):
@@ -170,7 +163,6 @@ class ManagedStep(LoopCallbackBase[S]):
         return logs, state
 
     def get_final_callback(self, strategy: Strategy) -> ManagedCallbackCallable[S]:
-        # @functools.wraps(self.managed_step_fn.get_function_with_input_signature())
         def lifted_postprocess(
             state: S, batch: Batch, broadcasts: Broadcasts, statics: Statics
         ) -> CallbackOutput[S]:
