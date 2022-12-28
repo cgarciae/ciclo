@@ -24,11 +24,12 @@ class State(managed.ManagedState):
 
     @classmethod
     def create(cls, *, apply_fn, params, tx, key, process, config, loss_fn, **kwargs):
+        ema_params = jax.tree_map(jnp.copy, params)
         return super().create(
             apply_fn=apply_fn,
             params=params,
             tx=tx,
-            ema_params=params,
+            ema_params=ema_params,
             key=key,
             process=process,
             config=config,
@@ -39,7 +40,6 @@ class State(managed.ManagedState):
 
 class TestManaged:
     def test_data_parallel_donate(self):
-
         process = GaussianDiffusion(
             betas=jnp.ones(10), alphas=jnp.ones(10), alpha_bars=jnp.ones(10)
         )

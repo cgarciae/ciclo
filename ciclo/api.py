@@ -48,22 +48,6 @@ A = TypeVar("A")
 S = TypeVar("S", bound=State)
 B = TypeVar("B", bound=Batch)
 Schedule = Callable[["Elapsed"], bool]
-CallbackOutput = Tuple[LogsLike, S]
-
-
-@runtime_checkable
-class LoopCallback(Protocol, Generic[S]):
-    def __loop_callback__(self, loop_state: "LoopState[S]") -> CallbackOutput[S]:
-        ...
-
-
-FunctionCallbackOutputs = Union[
-    Tuple[Optional[LogsLike], Optional[S]], LogsLike, S, None
-]
-GeneralCallback = Callable[[S, Batch, Broadcasts, Statics], FunctionCallbackOutputs[S]]
-InputTasks = Dict[Schedule, Union[InputCallback, List[InputCallback]]]
-ScheduleCallback = Dict[Schedule, List[LoopCallback[S]]]
-CallbackAdapter = Callable[[Any], LoopCallback[S]]
 
 
 class Elapsed(struct.PyTreeNode, Mapping[str, Any]):
@@ -366,72 +350,6 @@ class History(List[Logs]):
         self.append(logs)
 
 
-@dataclass
-class LoopState(Generic[S]):
-    state: S
-    batch: Batch
-    history: History
-    elapsed: Elapsed
-    logs: Logs
-    accumulated_logs: Logs
-    metadata: Any
-    stop_iteration: bool = False
-
-
-LoopOutput = Tuple[S, History, Elapsed]
-
-
-def to_standard_outputs(
-    outputs: FunctionCallbackOutputs[S], current_state: S
-) -> CallbackOutput[S]:
-    logs: LogsLike
-    state: S
-    if outputs is None:
-        logs = {}
-        state = current_state
-
-    elif type(outputs) is tuple:
-        if len(outputs) != 2:
-            raise ValueError(
-                f"Invalid output from callback function: {outputs}, must be a tuple of length 2"
-            )
-        logs = outputs[0] or {}
-        state = outputs[1] or current_state
-    elif isinstance(outputs, Dict):
-        logs = outputs
-        state = current_state
-    else:
-        logs = {}
-        state = outputs
-
-    return logs, state
-
-
-class LoopElement:
-    def keys(self) -> List[Schedule]:
-        return [ciclo.every(1)]
-
-    def __getitem__(self: A, key: Schedule) -> List[A]:
-        return [self]
-
-
-class LoopCallbackBase(LoopCallback[S], LoopElement):
-    @abstractmethod
-    def __loop_callback__(self, loop_state: LoopState[S]) -> CallbackOutput[S]:
-        ...
-
-
-@dataclass(frozen=True)
-class LoopFunctionCallback(LoopCallbackBase[S]):
-    f: Callable[..., FunctionCallbackOutputs[S]]
-
-    def __loop_callback__(self, loop_state: LoopState[S]) -> CallbackOutput[S]:
-        outputs = inject(self.f)(
-            loop_state.state, loop_state.batch, loop_state.elapsed, loop_state
-        )
-        return to_standard_outputs(outputs, loop_state.state)
-
-
 def inject(f: Callable[..., A]) -> Callable[..., A]:
     def _inject(*args) -> A:
         n_args = len(inspect.getfullargspec(f).args)
@@ -442,35 +360,27 @@ def inject(f: Callable[..., A]) -> Callable[..., A]:
     return _inject
 
 
-# ---------------------------------------
-# Registry
-# ---------------------------------------
-_REGISTRY: Dict[Type, CallbackAdapter] = {}
+# ----------------------------------
+# utils
+# ----------------------------------
 
 
-def register_adapter(adapter: CallbackAdapter, cls: Type):
-    if cls in _REGISTRY:
-        raise ValueError(f"Adapter for {cls} already registered")
+def get_batch_size(batch: Batch) -> int:
+    def get_size(sizes, x):
+        sizes.add(x.shape[0])
+        return sizes
 
-    _REGISTRY[cls] = adapter
-
-
-def get_adapter(cls: Type) -> Optional[CallbackAdapter]:
-    super_classes = inspect.getmro(cls)
-    for super_class in super_classes:
-        if super_class in _REGISTRY:
-            return _REGISTRY[super_class]
-    return None
+    sizes = jax.tree_util.tree_reduce(get_size, batch, set())
+    if len(sizes) != 1:
+        raise ValueError("Batch size must be the same for all elements in the batch.")
+    return sizes.pop()
 
 
-def get_loop_callback(f: Any) -> LoopCallback:
-    adaper = get_adapter(type(f))
-
-    if adaper is not None:
-        return adaper(f)
-    elif isinstance(f, LoopCallbackBase):
-        return f
-    elif callable(f):
-        return LoopFunctionCallback(f)
-    else:
-        raise ValueError(f"Invalid callback: {f}")
+def elapse(
+    dataset: Iterable[B], initial: Optional[Elapsed] = None
+) -> Iterable[Tuple[Elapsed, B]]:
+    elapsed = initial or Elapsed.create()
+    for batch in dataset:
+        batch_size = get_batch_size(batch)
+        elapsed = elapsed.update(batch_size)
+        yield elapsed, batch

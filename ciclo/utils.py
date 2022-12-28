@@ -3,13 +3,12 @@ from ciclo.api import (
     Batch,
     History,
     LogsLike,
-    LoopCallback,
     Elapsed,
-    LoopFunctionCallback,
     Period,
     Logs,
     B,
 )
+from ciclo.loops import LoopCallback, LoopFunctionCallback
 import jax
 
 F = TypeVar("F", bound=Callable[..., Any])
@@ -38,17 +37,6 @@ def at(
     return Period.create(steps=steps, samples=samples, time=time, date=date)
 
 
-def get_batch_size(batch: Batch) -> int:
-    def get_size(sizes, x):
-        sizes.add(x.shape[0])
-        return sizes
-
-    sizes = jax.tree_util.tree_reduce(get_size, batch, set())
-    if len(sizes) != 1:
-        raise ValueError("Batch size must be the same for all elements in the batch.")
-    return sizes.pop()
-
-
 def is_scalar(x):
     if isinstance(x, (int, float, bool)):
         return True
@@ -60,13 +48,3 @@ def is_scalar(x):
 
 def callback(f) -> LoopFunctionCallback:
     return LoopFunctionCallback(f)
-
-
-def elapse(
-    dataset: Iterable[B], initial: Optional[Elapsed] = None
-) -> Iterable[Tuple[Elapsed, B]]:
-    elapsed = initial or Elapsed.create()
-    for batch in dataset:
-        batch_size = get_batch_size(batch)
-        elapsed = elapsed.update(batch_size)
-        yield elapsed, batch

@@ -28,16 +28,15 @@ from flax.training import train_state
 from typing_extensions import Protocol, runtime_checkable
 from ciclo.api import (
     Broadcasts,
-    LoopCallbackBase,
-    CallbackOutput,
-    Elapsed,
     LogsLike,
-    State,
     Statics,
     inject,
-    register_adapter,
     Batch,
     Metric,
+)
+from ciclo.loops import (
+    LoopCallbackBase,
+    CallbackOutput,
     LoopState,
     FunctionCallbackOutputs,
     to_standard_outputs,

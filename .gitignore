@@ -132,3 +132,4 @@ dmypy.json
 /.vscode
 logdir
 checkpoints
+/tmp

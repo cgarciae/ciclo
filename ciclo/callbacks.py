@@ -19,17 +19,20 @@ from ciclo.api import (
     Batch,
     Logs,
     LogsLike,
-    LoopCallbackBase,
     Elapsed,
+    Period,
+    S,
+    get_batch_size,
+)
+from ciclo.loops import (
+    LoopCallbackBase,
     CallbackOutput,
     LoopOutput,
     LoopState,
-    Period,
-    S,
     register_adapter,
 )
 from ciclo.schedules import every
-from ciclo.utils import get_batch_size, is_scalar
+from ciclo.utils import is_scalar
 
 
 # import wandb Run
