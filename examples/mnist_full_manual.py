@@ -22,6 +22,7 @@ ds_train = ds_train.repeat().shuffle(1024).batch(batch_size).prefetch(1)
 ds_valid: tf.data.Dataset = tfds.load("mnist", split="test")
 ds_valid = ds_valid.batch(32, drop_remainder=True).prefetch(1)
 
+
 # Define model
 class Linear(nn.Module):
     @nn.compact
@@ -120,7 +121,7 @@ for elapsed, batch in ciclo.elapse(ds_train.as_numpy_iterator()):
         state = reset_metrics(state)
 
     if is_time_to_eval(elapsed):
-
+        eval_state = reset_metrics(state)
         for eval_batch in ds_valid.as_numpy_iterator():
             eval_logs, eval_state = eval_step(eval_state, eval_batch)
         # --------------------

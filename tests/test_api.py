@@ -1,11 +1,9 @@
 import ciclo
-from ciclo.api import inject
 import pytest
 
 
 class TestAPI:
     def test_elapsed_gt_period(self):
-
         period = ciclo.Period.create(steps=10)
         elapsed = ciclo.Elapsed.create()
 
@@ -29,8 +27,8 @@ class TestAPI:
             return x + y + z
 
         args = (1, 2, 3)
-        a = inject(f)(*args)
-        b = inject(g)(*args)
+        a = ciclo.inject(f)(*args)
+        b = ciclo.inject(g)(*args)
 
         assert a == 3
         assert b == 6
@@ -45,8 +43,8 @@ class TestAPI:
 
         obj = Obj()
         args = (1, 2, 3)
-        a = inject(obj.f)(*args)
-        b = inject(obj.g)(*args)
+        a = ciclo.inject(obj.f)(*args)
+        b = ciclo.inject(obj.g)(*args)
 
         assert a == 3
         assert b == 6

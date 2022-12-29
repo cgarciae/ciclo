@@ -15,15 +15,9 @@ from flax.training import checkpoints as flax_checkpoints
 from pkbar import Kbar
 from tqdm import tqdm
 
-from ciclo.api import (
-    Batch,
-    Logs,
-    LogsLike,
-    Elapsed,
-    Period,
-    S,
-    get_batch_size,
-)
+from ciclo.logging import Logs
+from ciclo.timetracking import Elapsed, Period
+from ciclo.types import LogsLike, Batch, S
 from ciclo.loops import (
     LoopCallbackBase,
     CallbackOutput,
@@ -32,7 +26,7 @@ from ciclo.loops import (
     register_adapter,
 )
 from ciclo.schedules import every
-from ciclo.utils import is_scalar
+from ciclo.utils import is_scalar, get_batch_size
 
 
 # import wandb Run
@@ -90,7 +84,6 @@ class inner_loop(LoopCallbackBase[S]):
         self.output_state = output_state
 
     def __call__(self, state: S) -> Tuple[LogsLike, S]:
-
         inner_state, log_history, _ = self.loop_fn(state)
         logs: LogsLike = log_history[-1] if len(log_history) > 0 else {}
         logs = {
@@ -287,7 +280,6 @@ class tqdm_bar(LoopCallbackBase[S]):
         gui=False,
         **kwargs,
     ):
-
         if isinstance(total, int):
             total = Period.create(steps=total)
 
@@ -348,7 +340,6 @@ class tqdm_bar(LoopCallbackBase[S]):
         )
 
     def __call__(self, elapsed: Elapsed, batch: Optional[Batch] = None) -> None:
-
         if self.total is None or self.total.steps is not None:
             if self.prev_step is None:
                 self.prev_step = elapsed.steps - 1
@@ -428,7 +419,6 @@ class keras_bar(LoopCallbackBase[S]):
         )
 
     def __call__(self, elapsed: Elapsed, logs: LogsLike) -> None:
-
         if self.total is None or self.total.steps is not None:
             current = elapsed.steps
         elif self.total.samples is not None:
@@ -465,7 +455,6 @@ class wandb_logger(LoopCallbackBase[S]):
     def __call__(self, elapsed: Elapsed, logs: LogsLike) -> None:
         data = {}
         for collection, collection_logs in logs.items():
-
             for key, value in collection_logs.items():
                 if is_scalar(value):
                     if key in data:

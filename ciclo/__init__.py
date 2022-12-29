@@ -2,8 +2,10 @@ __version__ = "0.1.0"
 
 
 from . import managed
-from .api import Elapsed, Period, LogsLike, Logs, elapse
-from .utils import at, callback, logs, history
+from .logging import Logs, History
+from .timetracking import Period, Elapsed
+from ciclo.types import LogsLike
+from .utils import at, callback, logs, history, elapse, inject
 from .callbacks import (
     checkpoint,
     early_stopping,

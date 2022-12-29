@@ -14,6 +14,7 @@ from clu.metrics import Accuracy, Average, Collection
 from flax import struct
 from flax.training import train_state
 
+
 batch_size = 32
 
 # load the MNIST dataset
@@ -21,6 +22,7 @@ ds_train: tf.data.Dataset = tfds.load("mnist", split="train", shuffle_files=True
 ds_train = ds_train.repeat().shuffle(1024).batch(batch_size).prefetch(1)
 ds_valid: tf.data.Dataset = tfds.load("mnist", split="test")
 ds_valid = ds_valid.batch(32, drop_remainder=True).prefetch(1)
+
 
 # Define model
 class Linear(nn.Module):
@@ -91,6 +93,7 @@ state = TrainState.create(
     tx=optax.adamw(1e-3),
     metrics=Metrics.empty(),
 )
+
 
 # training loop
 total_samples = 32 * 100

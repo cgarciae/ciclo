@@ -1,6 +1,6 @@
+import inspect
 from abc import abstractmethod
 from dataclasses import dataclass
-import inspect
 from typing import (
     Any,
     Callable,
@@ -13,25 +13,24 @@ from typing import (
     Type,
     Union,
 )
+
 from typing_extensions import Protocol, runtime_checkable
-from ciclo.api import (
-    S,
-    B,
+
+import ciclo
+from ciclo.types import (
     A,
+    B,
     Batch,
     Broadcasts,
-    Elapsed,
-    History,
     InputCallback,
-    Logs,
     LogsLike,
-    Period,
+    S,
     Schedule,
     Statics,
-    elapse,
-    inject,
 )
-
+from ciclo.logging import Logs, History
+from ciclo.timetracking import Period, Elapsed
+import ciclo
 
 CallbackOutput = Tuple[LogsLike, S]
 
@@ -112,7 +111,7 @@ class LoopFunctionCallback(LoopCallbackBase[S]):
     f: Callable[..., FunctionCallbackOutputs[S]]
 
     def __loop_callback__(self, loop_state: LoopState[S]) -> CallbackOutput[S]:
-        outputs = inject(self.f)(
+        outputs = ciclo.inject(self.f)(
             loop_state.state, loop_state.batch, loop_state.elapsed, loop_state
         )
         return to_standard_outputs(outputs, loop_state.state)
@@ -131,7 +130,6 @@ def loop(
     catch_keyboard_interrupt: bool = True,
     metadata: Optional[Any] = None,
 ) -> LoopOutput[S]:
-
     if isinstance(stop, int):
         stop_period = Period.create(steps=stop)
     else:
@@ -172,8 +170,7 @@ def loop(
     ]
 
     try:
-
-        for i, (elapsed, batch) in enumerate(elapse(dataset, initial=elapsed)):
+        for i, (elapsed, batch) in enumerate(ciclo.elapse(dataset, initial=elapsed)):
             loop_state.elapsed = elapsed
             loop_state.batch = batch
 

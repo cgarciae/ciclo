@@ -26,14 +26,14 @@ from flax import struct
 from flax.core import tracers
 from flax.training import train_state
 from typing_extensions import Protocol, runtime_checkable
-from ciclo.api import (
+from ciclo.types import (
     Broadcasts,
     LogsLike,
     Statics,
-    inject,
     Batch,
-    Metric,
+    CluMetric,
 )
+from ciclo.utils import inject
 from ciclo.loops import (
     LoopCallbackBase,
     CallbackOutput,
@@ -127,7 +127,6 @@ class ManagedStep(LoopCallbackBase[S]):
     managed_step_fn: ManagedCallback[S]
 
     def __call__(self, state: S, *args: Any) -> CallbackOutput[S]:
-
         if len(args) > 3:
             raise ValueError(f"Expected a maximum of 4 arguments, got {len(args) + 1}")
 
@@ -172,8 +171,8 @@ class ManagedStep(LoopCallbackBase[S]):
                 stateful_metrics = logs["stateful_metrics"]
                 assert isinstance(stateful_metrics, MutableMapping)
                 for key, value in stateful_metrics.items():
-                    if isinstance(value, Metric):
-                        metric: Metric = getattr(state, key)
+                    if isinstance(value, CluMetric):
+                        metric: CluMetric = getattr(state, key)
                         value = strategy.handle_metric(value)
                         metric = metric.merge(value)
                         state = state.replace(**{key: metric})

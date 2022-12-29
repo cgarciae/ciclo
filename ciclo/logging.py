@@ -19,147 +19,17 @@ from typing import (
     Union,
     overload,
 )
+from ciclo.timetracking import Elapsed
+from ciclo.types import CluMetric, LogPath, LogsLike
 
 import jax
 import jax.numpy as jnp
 import numpy as np
-from flax import struct
+
 from jax.tree_util import register_pytree_node
 from typing_extensions import Protocol, runtime_checkable
 
 import ciclo
-
-if importlib.util.find_spec("clu"):
-    from clu.metrics import Metric
-else:
-    locals()["Metric"] = type("Metric", (), {})
-
-# ---------------------------------------
-# types
-# ---------------------------------------
-State = Any
-Batch = Any
-Broadcasts = Any
-Statics = Any
-LogPath = Tuple[str, str]
-LogsLike = Dict[str, Mapping[str, Any]]
-InputCallback = Any
-A = TypeVar("A")
-S = TypeVar("S", bound=State)
-B = TypeVar("B", bound=Batch)
-Schedule = Callable[["Elapsed"], bool]
-
-
-class Elapsed(struct.PyTreeNode, Mapping[str, Any]):
-    steps: int
-    samples: int
-    date: float
-    _date_start: float = struct.field(pytree_node=True, repr=False)
-
-    @property
-    def time(self) -> float:
-        return self.date - self._date_start
-
-    @classmethod
-    def create(cls, steps: int = 0, samples: int = 0) -> "Elapsed":
-        now = datetime.now().timestamp()
-        return cls(steps=steps, samples=samples, _date_start=now, date=now)
-
-    def update(self, batch_size: int) -> "Elapsed":
-        return self.replace(
-            steps=self.steps + 1,
-            samples=self.samples + batch_size,
-            date=datetime.now().timestamp(),
-        )
-
-    def update_time(self) -> "Elapsed":
-        return self.replace(date=datetime.now().timestamp())
-
-    def __sub__(self, other: "Elapsed") -> "Elapsed":
-        return Elapsed(
-            steps=self.steps - other.steps,
-            samples=self.samples - other.samples,
-            date=self.date,
-            _date_start=other._date_start,
-        )
-
-    def _compare(
-        self, other: "Period", predicate: Callable[[float, float], bool]
-    ) -> bool:
-        if other.steps is not None and predicate(self.steps, other.steps):
-            return True
-        if other.samples is not None and predicate(self.samples, other.samples):
-            return True
-        if other.time is not None and predicate(self.time, other.time):
-            return True
-        if other.date is not None and predicate(self.date, other.date):
-            return True
-        return False
-
-    def __ge__(self, other: "Period") -> bool:
-        return self._compare(other, lambda a, b: a >= b)
-
-    def __gt__(self, other: "Period") -> bool:
-        return self._compare(other, lambda a, b: a > b)
-
-    def __le__(self, other: "Period") -> bool:
-        return self._compare(other, lambda a, b: a <= b)
-
-    def __lt__(self, other: "Period") -> bool:
-        return self._compare(other, lambda a, b: a < b)
-
-    def __eq__(self, other: "Period") -> bool:
-        return self._compare(other, lambda a, b: a == b)
-
-    def __ne__(self, other: "Period") -> bool:
-        return self._compare(other, lambda a, b: a != b)
-
-    # Mapping
-    def __iter__(self) -> Iterable[str]:
-        return self.__dict__.keys()
-
-    def __getitem__(self, key: str) -> Any:
-        if hasattr(self, key):
-            return getattr(self, key)
-        raise KeyError(key)
-
-    def __contains__(self, key: str) -> bool:
-        return hasattr(self, key)
-
-    def __len__(self) -> int:
-        return len(self.__dict__)
-
-
-@dataclass(frozen=True)
-class Period:
-    steps: Union[int, None]
-    samples: Union[int, None]
-    time: Union[float, int, None]
-    date: Union[float, None]
-
-    @classmethod
-    def create(
-        cls,
-        steps: Union[int, None] = None,
-        samples: Union[int, None] = None,
-        time: Union[timedelta, float, int, None] = None,
-        date: Union[datetime, float, None] = None,
-    ):
-        if all(x is None for x in [steps, samples, time, date]):
-            raise ValueError("At least one duration parameter must be specified.")
-
-        return cls(
-            steps=steps,
-            samples=samples,
-            time=time.total_seconds() if isinstance(time, timedelta) else time,
-            date=date.timestamp() if isinstance(date, datetime) else date,
-        )
-
-    def __repr__(self) -> str:
-        params_repr = ", ".join(
-            f"{k}={v}" for k, v in self.__dict__.items() if v is not None
-        )
-        return f"Period({params_repr})"
 
 
 class Logs(LogsLike):
@@ -184,7 +54,6 @@ class Logs(LogsLike):
     # logger behavior
     # ----------------------------------
     def add_entry(self, collection: str, name: str, value: Any) -> "Logs":
-
         if collection not in self:
             self[collection] = {}
 
@@ -200,14 +69,13 @@ class Logs(LogsLike):
         return self
 
     def add_entries(self, collection: str, values: Dict[str, Any]) -> "Logs":
-
         for name, value in values.items():
             self.add_entry(collection, name, value)
 
         return self
 
     def add_metric(self, name: str, value: Any, *, stateful: bool = False) -> "Logs":
-        if isinstance(value, Metric):
+        if isinstance(value, CluMetric):
             stateful = True
         collection = "metrics" if not stateful else "stateful_metrics"
         return self.add_entry(collection, name, value)
@@ -350,37 +218,4 @@ class History(List[Logs]):
         self.append(logs)
 
 
-def inject(f: Callable[..., A]) -> Callable[..., A]:
-    def _inject(*args) -> A:
-        n_args = len(inspect.getfullargspec(f).args)
-        if inspect.ismethod(f) or inspect.ismethod(f.__call__):
-            n_args -= 1
-        return f(*args[:n_args])
-
-    return _inject
-
-
-# ----------------------------------
-# utils
-# ----------------------------------
-
-
-def get_batch_size(batch: Batch) -> int:
-    def get_size(sizes, x):
-        sizes.add(x.shape[0])
-        return sizes
-
-    sizes = jax.tree_util.tree_reduce(get_size, batch, set())
-    if len(sizes) != 1:
-        raise ValueError("Batch size must be the same for all elements in the batch.")
-    return sizes.pop()
-
-
-def elapse(
-    dataset: Iterable[B], initial: Optional[Elapsed] = None
-) -> Iterable[Tuple[Elapsed, B]]:
-    elapsed = initial or Elapsed.create()
-    for batch in dataset:
-        batch_size = get_batch_size(batch)
-        elapsed = elapsed.update(batch_size)
-        yield elapsed, batch
+__all__ = ["Logs", "History"]

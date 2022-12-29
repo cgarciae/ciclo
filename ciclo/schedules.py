@@ -2,8 +2,10 @@ from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple, Union
 from datetime import datetime, timedelta
 
-from ciclo.api import Elapsed, Period, Schedule
+from ciclo.timetracking import Elapsed, Period
+from ciclo.types import Schedule
 from ciclo.loops import LoopCallback
+
 
 # ---------------------------------------
 # every
@@ -33,7 +35,6 @@ class Every:
     steps_offset: int
 
     def __call__(self, elapsed: Elapsed) -> bool:
-
         if self.period.steps is not None:
             steps = elapsed.steps - self.steps_offset
             return steps >= 0 and steps % self.period.steps == 0

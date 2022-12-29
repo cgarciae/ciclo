@@ -1,15 +1,12 @@
+import inspect
 from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, TypeVar
-from ciclo.api import (
-    Batch,
-    History,
-    LogsLike,
-    Elapsed,
-    Period,
-    Logs,
-    B,
-)
-from ciclo.loops import LoopCallback, LoopFunctionCallback
+
 import jax
+
+from ciclo.logging import Elapsed, History, Logs
+from ciclo.loops import LoopCallback, LoopFunctionCallback
+from ciclo.timetracking import Period
+from ciclo.types import A, B, Batch, LogsLike
 
 F = TypeVar("F", bound=Callable[..., Any])
 
@@ -48,3 +45,34 @@ def is_scalar(x):
 
 def callback(f) -> LoopFunctionCallback:
     return LoopFunctionCallback(f)
+
+
+def get_batch_size(batch: Batch) -> int:
+    def get_size(sizes, x):
+        sizes.add(x.shape[0])
+        return sizes
+
+    sizes = jax.tree_util.tree_reduce(get_size, batch, set())
+    if len(sizes) != 1:
+        raise ValueError("Batch size must be the same for all elements in the batch.")
+    return sizes.pop()
+
+
+def elapse(
+    dataset: Iterable[B], initial: Optional[Elapsed] = None
+) -> Iterable[Tuple[Elapsed, B]]:
+    elapsed = initial or Elapsed.create()
+    for batch in dataset:
+        batch_size = get_batch_size(batch)
+        elapsed = elapsed.update(batch_size)
+        yield elapsed, batch
+
+
+def inject(f: Callable[..., A]) -> Callable[..., A]:
+    def _inject(*args) -> A:
+        n_args = len(inspect.getfullargspec(f).args)
+        if inspect.ismethod(f) or inspect.ismethod(f.__call__):
+            n_args -= 1
+        return f(*args[:n_args])
+
+    return _inject

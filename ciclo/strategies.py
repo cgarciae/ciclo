@@ -20,7 +20,7 @@ from einop import einop
 from flax import jax_utils
 from flax.training import train_state
 from typing_extensions import Protocol, runtime_checkable
-from ciclo.api import LogsLike, Metric
+from ciclo.types import LogsLike, CluMetric
 from ciclo.loops import GeneralCallback
 
 
@@ -36,7 +36,7 @@ class HasKey(Protocol):
 StrategyConstructor = Callable[[], "Strategy"]
 A = TypeVar("A")
 S = TypeVar("S", bound=Dataclass)
-ME = TypeVar("ME", bound=Metric)
+ME = TypeVar("ME", bound=CluMetric)
 
 
 _REGISTRY: Dict[str, StrategyConstructor] = {}
