@@ -4,7 +4,7 @@ from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, TypeVar
 import jax
 
 from ciclo.logging import Elapsed, History, Logs
-from ciclo.loops import LoopCallback, LoopFunctionCallback
+from ciclo.loops import LoopFunctionCallback
 from ciclo.timetracking import Period
 from ciclo.types import A, B, Batch, LogsLike
 

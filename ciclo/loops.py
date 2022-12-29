@@ -17,6 +17,8 @@ from typing import (
 from typing_extensions import Protocol, runtime_checkable
 
 import ciclo
+from ciclo.logging import History, Logs
+from ciclo.timetracking import Elapsed, Period
 from ciclo.types import (
     A,
     B,
@@ -28,9 +30,6 @@ from ciclo.types import (
     Schedule,
     Statics,
 )
-from ciclo.logging import Logs, History
-from ciclo.timetracking import Period, Elapsed
-import ciclo
 
 CallbackOutput = Tuple[LogsLike, S]
 

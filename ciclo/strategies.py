@@ -1,16 +1,11 @@
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, is_dataclass, replace
-from functools import partial
-import importlib.util
+from dataclasses import dataclass, replace
 from typing import (
     Any,
     Callable,
     Dict,
-    Generic,
     Optional,
-    Tuple,
     TypeVar,
-    Union,
     overload,
 )
 
@@ -18,9 +13,8 @@ import jax
 import jax.numpy as jnp
 from einop import einop
 from flax import jax_utils
-from flax.training import train_state
 from typing_extensions import Protocol, runtime_checkable
-from ciclo.types import LogsLike, CluMetric
+from ciclo.types import CluMetric
 from ciclo.loops import GeneralCallback
 
 

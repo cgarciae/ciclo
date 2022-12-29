@@ -1,21 +1,11 @@
-from functools import partial
-import functools
-import importlib.util
-import inspect
-import threading
-from abc import abstractmethod
-from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import (
     Any,
     Callable,
     Dict,
     Generic,
-    List,
     Mapping,
     MutableMapping,
-    Optional,
-    Tuple,
     Type,
     TypeVar,
     Union,
@@ -23,26 +13,19 @@ from typing import (
 
 import jax
 from flax import struct
-from flax.core import tracers
 from flax.training import train_state
 from typing_extensions import Protocol, runtime_checkable
-from ciclo.types import (
-    Broadcasts,
-    LogsLike,
-    Statics,
-    Batch,
-    CluMetric,
-)
-from ciclo.utils import inject
+
 from ciclo.loops import (
-    LoopCallbackBase,
     CallbackOutput,
-    LoopState,
     FunctionCallbackOutputs,
+    LoopCallbackBase,
+    LoopState,
     to_standard_outputs,
 )
-
 from ciclo.strategies import Strategy, get_strategy
+from ciclo.types import Batch, Broadcasts, CluMetric, LogsLike, Statics
+from ciclo.utils import inject
 
 
 @runtime_checkable

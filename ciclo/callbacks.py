@@ -1,8 +1,3 @@
-# ---------------------------------------
-# callbacks
-# ---------------------------------------
-
-
 import functools
 import importlib.util
 import os

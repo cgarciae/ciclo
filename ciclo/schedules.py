@@ -1,10 +1,9 @@
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Tuple, Union
 from datetime import datetime, timedelta
 
 from ciclo.timetracking import Elapsed, Period
 from ciclo.types import Schedule
-from ciclo.loops import LoopCallback
 
 
 # ---------------------------------------

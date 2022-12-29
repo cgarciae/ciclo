@@ -1,6 +1,5 @@
 import dataclasses
 from datetime import datetime, timedelta
-import importlib.util
 from typing import Any, Callable, Iterable, Mapping, Union
 
 from flax import struct
