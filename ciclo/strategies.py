@@ -1,21 +1,15 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, replace
-from typing import (
-    Any,
-    Callable,
-    Dict,
-    Optional,
-    TypeVar,
-    overload,
-)
+from typing import Any, Callable, Dict, Optional, TypeVar, overload
 
 import jax
 import jax.numpy as jnp
 from einop import einop
 from flax import jax_utils
 from typing_extensions import Protocol, runtime_checkable
-from ciclo.types import CluMetric
+
 from ciclo.loops import GeneralCallback
+from ciclo.types import CluMetric
 
 
 class Dataclass(Protocol):

@@ -11,17 +11,17 @@ from pkbar import Kbar
 from tqdm import tqdm
 
 from ciclo.logging import Logs
-from ciclo.timetracking import Elapsed, Period
-from ciclo.types import LogsLike, Batch, S
 from ciclo.loops import (
-    LoopCallbackBase,
     CallbackOutput,
+    LoopCallbackBase,
     LoopOutput,
     LoopState,
     register_adapter,
 )
 from ciclo.schedules import every
-from ciclo.utils import is_scalar, get_batch_size
+from ciclo.timetracking import Elapsed, Period
+from ciclo.types import Batch, LogsLike, S
+from ciclo.utils import get_batch_size, is_scalar
 
 
 # import wandb Run

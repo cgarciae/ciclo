@@ -1,16 +1,17 @@
 # %%
 from time import time
 
-import ciclo
 import flax.linen as nn
 import jax
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
+import numpy as np
 import optax
 import tensorflow as tf
 import tensorflow_datasets as tfds
 from flax.training.train_state import TrainState
-import numpy as np
+
+import ciclo
 
 batch_size = 32
 

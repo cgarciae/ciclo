@@ -1,14 +1,16 @@
 from curses import keyname
 from time import time
-import ciclo
+
 import flax.linen as nn
 import jax
 import jax.numpy as jnp
 import optax
 import tensorflow as tf
 import tensorflow_datasets as tfds
-from ciclo import managed
 from clu.metrics import Accuracy, Average
+
+import ciclo
+from ciclo import managed
 
 print(jax.local_devices())
 

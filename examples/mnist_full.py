@@ -1,7 +1,6 @@
 # %%
 from time import time
 
-import ciclo
 import flax.linen as nn
 import jax
 import jax.numpy as jnp
@@ -14,6 +13,7 @@ from clu.metrics import Accuracy, Average, Collection
 from flax import struct
 from flax.training import train_state
 
+import ciclo
 
 batch_size = 32
 

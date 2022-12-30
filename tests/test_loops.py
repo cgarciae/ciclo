@@ -1,5 +1,6 @@
-import ciclo
 import numpy as np
+
+import ciclo
 
 
 class TestLoops:

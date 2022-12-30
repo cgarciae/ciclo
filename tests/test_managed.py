@@ -1,12 +1,13 @@
+from typing import Any
+
 import flax.linen as nn
 import jax
 import jax.numpy as jnp
 import optax
+from flax import struct
 
 import ciclo
 from ciclo import managed
-from flax import struct
-from typing import Any
 
 
 class GaussianDiffusion(struct.PyTreeNode):

@@ -1,5 +1,6 @@
-from typing import Any, Callable, Dict, Mapping, Tuple, TypeVar
 import importlib.util
+from typing import Any, Callable, Dict, Mapping, Tuple, TypeVar
+
 import ciclo
 
 if importlib.util.find_spec("clu"):

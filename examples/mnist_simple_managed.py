@@ -1,10 +1,11 @@
-import ciclo
 import flax.linen as nn
 import jax
 import jax.numpy as jnp
 import optax
 import tensorflow as tf
 import tensorflow_datasets as tfds
+
+import ciclo
 from ciclo import managed
 
 strategy = ciclo.get_strategy("data_parallel")

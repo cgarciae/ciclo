@@ -1,21 +1,20 @@
 __version__ = "0.1.0"
 
 
-from . import managed
-from .logging import Logs, History
-from .timetracking import Period, Elapsed
 from ciclo.types import LogsLike
-from .utils import at, callback, logs, history, elapse, inject
+
+from . import managed
 from .callbacks import (
     checkpoint,
     early_stopping,
     inner_loop,
     keras_bar,
+    noop,
     tqdm_bar,
     wandb_logger,
-    noop,
 )
-from .loops import loop, LoopState, LoopElement, LoopCallbackBase
+from .logging import History, Logs
+from .loops import LoopCallbackBase, LoopElement, LoopState, loop
 from .schedules import every, piecewise
 from .strategies import (
     JIT,
@@ -25,3 +24,5 @@ from .strategies import (
     get_strategy,
     register_strategy,
 )
+from .timetracking import Elapsed, Period
+from .utils import at, callback, elapse, history, inject, logs

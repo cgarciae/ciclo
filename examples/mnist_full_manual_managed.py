@@ -1,7 +1,6 @@
 # %%
 from time import time
 
-import ciclo
 import flax.linen as nn
 import jax
 import jax.numpy as jnp
@@ -13,6 +12,8 @@ import tensorflow_datasets as tfds
 from clu.metrics import Accuracy, Average, Collection
 from flax import struct
 from flax.training import train_state
+
+import ciclo
 from ciclo import managed
 
 strategy = ciclo.get_strategy("jit")

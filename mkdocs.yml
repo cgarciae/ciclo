@@ -2,19 +2,22 @@ site_name: Ciclo
 
 nav:
 - Overview: index.md
-- Getting Started: getting_started.ipynb
+- Getting Started: getting_started.md
 
 theme:
   name: material
 
 markdown_extensions:
-- pymdownx.arithmatex
-- admonition
-- codehilite:
-    guess_lang: false
-    use_pygments: true
-    noclasses: true
-    pygments_style: default
+  - pymdownx.arithmatex
+  - admonition
+  - codehilite:
+      guess_lang: false
+      use_pygments: true
+      noclasses: true
+      pygments_style: default
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
 
 plugins:
   - mkdocs-jupyter

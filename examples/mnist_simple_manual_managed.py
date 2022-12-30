@@ -1,7 +1,6 @@
 # %%
 from time import time
 
-import ciclo
 import flax.linen as nn
 import jax
 import jax.numpy as jnp
@@ -10,8 +9,10 @@ import numpy as np
 import optax
 import tensorflow as tf
 import tensorflow_datasets as tfds
-from ciclo import managed
 from flax.training.train_state import TrainState
+
+import ciclo
+from ciclo import managed
 
 strategy = ciclo.get_strategy("data_parallel")
 batch_size = strategy.lift_batch_size(32)

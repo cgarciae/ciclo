@@ -9,14 +9,14 @@ from typing import (
     Union,
     overload,
 )
-from ciclo.timetracking import Elapsed
-from ciclo.types import CluMetric, LogPath, LogsLike
 
 import jax
 import jax.numpy as jnp
 import numpy as np
-
 from jax.tree_util import register_pytree_node
+
+from ciclo.timetracking import Elapsed
+from ciclo.types import CluMetric, LogPath, LogsLike
 
 
 class Logs(LogsLike):

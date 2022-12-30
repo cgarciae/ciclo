@@ -1,0 +1,81 @@
+# Checks that we can build and validate the Unittest
+name: Run Tests
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+jobs:
+  pre-commit:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - uses: actions/setup-python@v4
+    - uses: pre-commit/action@v2.0.3
+  test:
+    name: Run Tests 
+    if: ${{ !contains(github.event.pull_request.title, 'WIP') }}
+    runs-on: ubuntu-latest 
+    strategy:
+      matrix:
+        python-version: [3.7, 3.8, 3.9]
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 1
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install Poetry
+        uses: snok/install-poetry@v1.1.1
+        with:
+          version: 1.1.4
+
+      - name: Install Dependencies
+        run: |
+          poetry config virtualenvs.create false
+          pip install -U certifi
+          poetry install
+
+      - name: Run Tests
+        run: pytest --cov=elegy --cov-report=term-missing --cov-report=xml
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v1
+
+      - name: Test Examples
+        run: bash scripts/test-examples.sh
+
+  test-import:
+    name: Test Import without Dev Dependencies
+    if: ${{ !contains(github.event.pull_request.title, 'WIP') }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.7, 3.8, 3.9]
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 1
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install Poetry
+        uses: snok/install-poetry@v1.1.1
+        with:
+          version: 1.1.4
+
+      - name: Install Dependencies
+        run: |
+          pip install -U certifi
+          poetry config virtualenvs.create false
+          poetry install --no-dev
+        
+      - name: Test Import Elegy
+        run: python -c "import elegy"

@@ -1,5 +1,6 @@
-import ciclo
 import pytest
+
+import ciclo
 
 
 class TestAPI:
