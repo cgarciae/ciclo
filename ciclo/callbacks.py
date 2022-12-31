@@ -6,7 +6,6 @@ from datetime import datetime
 from enum import Enum, auto
 from typing import Any, Callable, Dict, Optional, Tuple, Union, overload
 
-from flax.training import checkpoints as flax_checkpoints
 from pkbar import Kbar
 from tqdm import tqdm
 
@@ -24,16 +23,15 @@ from ciclo.types import Batch, LogsLike, S
 from ciclo.utils import get_batch_size, is_scalar
 
 
-# import wandb Run
-def _get_Run():
-    if importlib.util.find_spec("wandb") is not None:
-        from wandb.wandb_run import Run
-    else:
-        locals()["Run"] = Any
-    return Run
+def unavailable_dependency(msg: str) -> Any:
+    class DependencyNotAvailable(LoopCallbackBase[S]):
+        def __init__(self, *args: Any, **kwargs: Any) -> None:
+            raise RuntimeError(msg)
 
+        def __loop_callback__(self, loop_state: LoopState[S]) -> CallbackOutput[S]:
+            raise RuntimeError(msg)
 
-Run = _get_Run()
+    return DependencyNotAvailable
 
 
 class OptimizationMode(str, Enum):
@@ -96,83 +94,95 @@ class inner_loop(LoopCallbackBase[S]):
         return self(loop_state.state)
 
 
-class checkpoint(LoopCallbackBase[S]):
-    def __init__(
-        self,
-        ckpt_dir: Union[str, os.PathLike],
-        prefix: str = "checkpoint_",
-        keep: int = 1,
-        overwrite: bool = False,
-        keep_every_n_steps: Optional[int] = None,
-        async_manager: Optional[flax_checkpoints.AsyncManager] = None,
-        monitor: Optional[str] = None,
-        mode: Union[str, OptimizationMode] = "min",
-    ):
-        if isinstance(mode, str):
-            mode = OptimizationMode[mode]
+if importlib.util.find_spec("tensorflow") is not None:
+    from flax.training import checkpoints as flax_checkpoints
 
-        if mode not in OptimizationMode:
-            raise ValueError(
-                f"Invalid mode: {mode}, expected one of {list(OptimizationMode)}"
-            )
-        else:
-            self.mode = mode
+    class checkpoint(LoopCallbackBase[S]):
+        def __init__(
+            self,
+            ckpt_dir: Union[str, os.PathLike],
+            prefix: str = "checkpoint_",
+            keep: int = 1,
+            overwrite: bool = False,
+            keep_every_n_steps: Optional[int] = None,
+            async_manager: Optional[flax_checkpoints.AsyncManager] = None,
+            monitor: Optional[str] = None,
+            mode: Union[str, OptimizationMode] = "min",
+        ):
+            if isinstance(mode, str):
+                mode = OptimizationMode[mode]
 
-        self.ckpt_dir = ckpt_dir
-        self.prefix = prefix
-        self.keep = keep
-        self.overwrite = overwrite
-        self.keep_every_n_steps = keep_every_n_steps
-        self.async_manager = async_manager
-        self.monitor = monitor
-        self.minimize = self.mode == OptimizationMode.min
-        self._best: Optional[float] = None
-
-    def __call__(
-        self, elapsed: Elapsed, state: S, logs: Optional[LogsLike] = None
-    ) -> None:
-        save_checkpoint = True
-        step_or_metric = elapsed.steps
-        overwrite = self.overwrite
-
-        if self.monitor is not None:
-            if logs is None:
+            if mode not in OptimizationMode:
                 raise ValueError(
-                    "checkpoint callback requires logs to monitor a metric"
+                    f"Invalid mode: {mode}, expected one of {list(OptimizationMode)}"
                 )
-            if not isinstance(logs, Logs):
-                logs = Logs(logs)
-
-            try:
-                value = logs.entry_value(self.monitor)
-            except KeyError:
-                raise ValueError(f"Monitored value '{self.monitor}' not found in logs")
-
-            if (
-                self._best is None
-                or (self.minimize and value < self._best)
-                or (not self.minimize and value > self._best)
-            ):
-                self._best = value
-                step_or_metric = value if self.mode == OptimizationMode.max else -value
             else:
-                save_checkpoint = False
+                self.mode = mode
 
-        if save_checkpoint:
-            flax_checkpoints.save_checkpoint(
-                ckpt_dir=self.ckpt_dir,
-                target=state,
-                step=step_or_metric,
-                prefix=self.prefix,
-                keep=self.keep,
-                overwrite=overwrite,
-                keep_every_n_steps=self.keep_every_n_steps,
-                async_manager=self.async_manager,
-            )
+            self.ckpt_dir = ckpt_dir
+            self.prefix = prefix
+            self.keep = keep
+            self.overwrite = overwrite
+            self.keep_every_n_steps = keep_every_n_steps
+            self.async_manager = async_manager
+            self.monitor = monitor
+            self.minimize = self.mode == OptimizationMode.min
+            self._best: Optional[float] = None
 
-    def __loop_callback__(self, loop_state: LoopState[S]) -> CallbackOutput[S]:
-        self(loop_state.elapsed, loop_state.state, loop_state.accumulated_logs)
-        return {}, loop_state.state
+        def __call__(
+            self, elapsed: Elapsed, state: S, logs: Optional[LogsLike] = None
+        ) -> None:
+            save_checkpoint = True
+            step_or_metric = elapsed.steps
+            overwrite = self.overwrite
+
+            if self.monitor is not None:
+                if logs is None:
+                    raise ValueError(
+                        "checkpoint callback requires logs to monitor a metric"
+                    )
+                if not isinstance(logs, Logs):
+                    logs = Logs(logs)
+
+                try:
+                    value = logs.entry_value(self.monitor)
+                except KeyError:
+                    raise ValueError(
+                        f"Monitored value '{self.monitor}' not found in logs"
+                    )
+
+                if (
+                    self._best is None
+                    or (self.minimize and value < self._best)
+                    or (not self.minimize and value > self._best)
+                ):
+                    self._best = value
+                    step_or_metric = (
+                        value if self.mode == OptimizationMode.max else -value
+                    )
+                else:
+                    save_checkpoint = False
+
+            if save_checkpoint:
+                flax_checkpoints.save_checkpoint(
+                    ckpt_dir=self.ckpt_dir,
+                    target=state,
+                    step=step_or_metric,
+                    prefix=self.prefix,
+                    keep=self.keep,
+                    overwrite=overwrite,
+                    keep_every_n_steps=self.keep_every_n_steps,
+                    async_manager=self.async_manager,
+                )
+
+        def __loop_callback__(self, loop_state: LoopState[S]) -> CallbackOutput[S]:
+            self(loop_state.elapsed, loop_state.state, loop_state.accumulated_logs)
+            return {}, loop_state.state
+
+else:
+    checkpoint = unavailable_dependency(
+        "'tensorflow' package is not available, please install it to use the 'checkpoint' callback"
+    )
 
 
 class early_stopping(LoopCallbackBase[S]):
@@ -443,25 +453,35 @@ class keras_bar(LoopCallbackBase[S]):
         return {}, loop_state.state
 
 
-class wandb_logger(LoopCallbackBase[S]):
-    def __init__(self, run: Run):
-        self.run = run
+if importlib.util.find_spec("wandb") is not None:
+    from wandb.wandb_run import Run
 
-    def __call__(self, elapsed: Elapsed, logs: LogsLike) -> None:
-        data = {}
-        for collection, collection_logs in logs.items():
-            for key, value in collection_logs.items():
-                if is_scalar(value):
-                    if key in data:
-                        key = f"{collection}.{key}"
-                    data[key] = value
+    class wandb_logger(LoopCallbackBase[S]):
+        def __init__(self, run: Run):
+            from wandb.wandb_run import Run
 
-        if len(data) > 0:
-            self.run.log(data, step=elapsed.steps)
+            self.run: Run = run
 
-    def __loop_callback__(self, loop_state: LoopState[S]) -> CallbackOutput[S]:
-        self(loop_state.elapsed, loop_state.logs)
-        return {}, loop_state.state
+        def __call__(self, elapsed: Elapsed, logs: LogsLike) -> None:
+            data = {}
+            for collection, collection_logs in logs.items():
+                for key, value in collection_logs.items():
+                    if is_scalar(value):
+                        if key in data:
+                            key = f"{collection}.{key}"
+                        data[key] = value
+
+            if len(data) > 0:
+                self.run.log(data, step=elapsed.steps)
+
+        def __loop_callback__(self, loop_state: LoopState[S]) -> CallbackOutput[S]:
+            self(loop_state.elapsed, loop_state.logs)
+            return {}, loop_state.state
+
+else:
+    wandb_logger = unavailable_dependency(
+        "'wandb' package is not available, please install it to use the 'wandb_logger' callback"
+    )
 
 
 class NoOp(LoopCallbackBase[S]):
