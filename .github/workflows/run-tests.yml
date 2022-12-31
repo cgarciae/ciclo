@@ -33,17 +33,21 @@ jobs:
         with:
           version: 1.2.1
 
+      - name: Setup Poetry
+        run: |
+          poetry config virtualenvs.in-project true
+
       - name: Cache
         id: cache
         uses: actions/cache@v3.2.2
         with:
-          path: .venv
+          path: '.venv'
           key: run-tests-${{ hashFiles('poetry.lock') }}
 
       - name: Install Dependencies
         if: steps.cache.outputs.cache-hit != 'true'
         run: |
-          poetry config virtualenvs.in-project true
+          if [ -d ".venv" ]; then rm -rf .venv; fi
           poetry run pip install -U certifi
           poetry install
 
@@ -74,18 +78,22 @@ jobs:
         uses: snok/install-poetry@v1.3.3
         with:
           version: 1.2.1
+      
+      - name: Setup Poetry
+        run: |
+          poetry config virtualenvs.in-project true
 
       - name: Cache
         id: cache
         uses: actions/cache@v3.2.2
         with:
-          path: .venv
+          path: '.venv'
           key: test-import-${{ hashFiles('poetry.lock') }}
 
       - name: Install Dependencies
         if: steps.cache.outputs.cache-hit != 'true'
         run: |
-          poetry config virtualenvs.in-project true
+          if [ -d ".venv" ]; then rm -rf .venv; fi
           poetry run pip install -U certifi
           poetry install --no-dev
         
