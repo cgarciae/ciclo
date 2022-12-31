@@ -6,7 +6,6 @@ from datetime import datetime
 from enum import Enum, auto
 from typing import Any, Callable, Dict, Optional, Tuple, Union, overload
 
-from flax.training import checkpoints as flax_checkpoints
 from pkbar import Kbar
 from tqdm import tqdm
 
