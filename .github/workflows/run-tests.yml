@@ -50,6 +50,10 @@ jobs:
           if [ -d ".venv" ]; then rm -rf .venv; fi
           poetry run pip install -U certifi
           poetry install
+      
+      - name: Install Package
+        run: |
+          poetry install
 
       - name: Run Tests
         run: poetry run pytest --cov=ciclo --cov-report=term-missing --cov-report=xml
@@ -96,6 +100,10 @@ jobs:
           if [ -d ".venv" ]; then rm -rf .venv; fi
           poetry run pip install -U certifi
           poetry install --no-dev
+
+      - name: Install Package
+        run: |
+          poetry install
         
       - name: Test Import
         run: |
