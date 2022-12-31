@@ -89,6 +89,6 @@ jobs:
           poetry run pip install -U certifi
           poetry install --no-dev
         
-      - name: Test Import Elegy
+      - name: Test Import
         run: |
           poetry run python -c "import ciclo"
