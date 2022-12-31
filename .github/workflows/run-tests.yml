@@ -103,7 +103,7 @@ jobs:
 
       - name: Install Package
         run: |
-          poetry install
+          poetry install --no-dev
         
       - name: Test Import
         run: |
