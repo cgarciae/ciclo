@@ -17,10 +17,10 @@
       
     
     
-      <link rel="stylesheet" href="assets/stylesheets/main.472b142f.min.css">
+      <link rel="stylesheet" href="assets/stylesheets/main.975780f9.min.css">
       
         
-        <link rel="stylesheet" href="assets/stylesheets/palette.08040f6c.min.css">
+        <link rel="stylesheet" href="assets/stylesheets/palette.2505c338.min.css">
         
       
       
@@ -191,52 +191,25 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#training-utilities" class="md-nav__link">
-    Training utilities
+  <a href="#status" class="md-nav__link">
+    Status
   </a>
-  
-    <nav class="md-nav" aria-label="Training utilities">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#time-tracking" class="md-nav__link">
-    Time Tracking
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#schedules" class="md-nav__link">
-    Schedules
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#callbacks" class="md-nav__link">
-    Callbacks
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#logging" class="md-nav__link">
-    Logging
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#loop-language" class="md-nav__link">
-    Loop language
+  <a href="#utilities" class="md-nav__link">
+    Utilities
   </a>
   
-    <nav class="md-nav" aria-label="Loop language">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#training-loop" class="md-nav__link">
+    Training loop
+  </a>
+  
+    <nav class="md-nav" aria-label="Training loop">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -308,52 +281,25 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#training-utilities" class="md-nav__link">
-    Training utilities
+  <a href="#status" class="md-nav__link">
+    Status
   </a>
-  
-    <nav class="md-nav" aria-label="Training utilities">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#time-tracking" class="md-nav__link">
-    Time Tracking
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#schedules" class="md-nav__link">
-    Schedules
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#callbacks" class="md-nav__link">
-    Callbacks
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#logging" class="md-nav__link">
-    Logging
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#loop-language" class="md-nav__link">
-    Loop language
+  <a href="#utilities" class="md-nav__link">
+    Utilities
   </a>
   
-    <nav class="md-nav" aria-label="Loop language">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#training-loop" class="md-nav__link">
+    Training loop
+  </a>
+  
+    <nav class="md-nav" aria-label="Training loop">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -383,20 +329,23 @@
                   
 
 
+<p><a href="https://codecov.io/gh/cgarciae/ciclo"><img alt="codecov" src="https://codecov.io/gh/cgarciae/ciclo/branch/main/graph/badge.svg?token=3IKEUAU3C8" /></a></p>
 <h1 id="ciclo">Ciclo</h1>
 <p><em>Training loop utilities and abstractions for JAX</em></p>
-<p><code>ciclo</code> is a library for training loops in JAX. It provides a set of utilities and abstractions to build complex training loops and higher-level frameworks.</p>
+<p><code>ciclo</code> is a functional library for training loops in JAX. It provides a set of utilities and abstractions to build complex training loops with any JAX framework. <code>ciclo</code> defines a set of building blocks that naturally compose together so they can scale up to build higher-level abstractions.</p>
 <p><strong>Features</strong></p>
 <p>✔️ Training utilities <br>
 ✔️ Loop language <br>
-🧪 Managed API (Distributed Strategies) <br>
-💡 Predefined Loops (e.g. <code>fit</code>) <br>
-💡 Framework support <br></p>
+🧪 [experimental] Managed API (simplified training + parallelism) <br>
+💡 [idea] Predefined Loops (e.g. <code>fit</code>) <br>
+💡 [idea] Framework support <br></p>
 <details><summary><b>Why Ciclo?</b></summary>
 
 
 - In JAX functions are first-class citizens, instead of monolithic classes like `Model` or `Trainer` in other frameworks, there is a lot of benefit in a functional API for the training interface as well.<br>
-- The JAX community is very focused on research, and as such there is a lot of interest in flexibility and control over the training loop. For this reason, `ciclo` provides some basic utilities and lets the user choose their desired level of abstraction.<br><br>
+- The JAX community is very focused on research, and as such there is a lot of interest in flexibility and control over the training loop. For this reason, `ciclo` provides some basic utilities and lets the user choose their desired level of abstraction.<br>
+- Choosing the wrong abstractions can often break a framework, when this happens users often abandone the framework altogether. `ciclo` tries to avoid this by providing a set of utilities than can stand on their own so they can be useful even if the user decides to build their own training loop, but allows them to compose together and be used with ever increasing levels of abstraction. Ideally in the future a user should be able to pick anything from a Keras-like simplified experience to defining their own loops, or just coding the training loop manually and still have a good experience.<br><br>
+
 
 <b>Comparison with other libraries</b><br><br>
 
@@ -405,167 +354,77 @@
 
 </details>
 
-<h3 id="installation">Installation</h3>
-<div class="codehilite" style="background: #f8f8f8"><pre style="line-height: 125%;"><span></span><code>pip install ciclo
+<h2 id="installation">Installation</h2>
+<div class="highlight"><pre><span></span><code>pip install ciclo
 </code></pre></div>
-
-<hr />
-<h2 id="training-utilities">Training utilities</h2>
+<h2 id="status">Status</h2>
+<p>Ciclo is still in early development, the API is subject to change, expect things to break. If you are interested in contributing, please reach out.</p>
+<h2 id="utilities">Utilities</h2>
 <ul>
-<li>Time tracking: <code>at</code>, <code>elapse</code>, ...</li>
-<li>Schedules: <code>every</code>, ...</li>
-<li>Callbacks: <code>checkpoint</code>, <code>early_stopping</code>, <code>keras_bar</code>, ...</li>
-<li>Logging: <code>logs</code>, <code>history</code></li>
+<li>Time tracking</li>
+<li>Logging</li>
+<li>Schedules</li>
+<li>Callbacks</li>
+<li>Loops</li>
+<li>Parallelism [experimental]</li>
 </ul>
-<h3 id="time-tracking">Time Tracking</h3>
-<div class="codehilite" style="background: #f8f8f8"><pre style="line-height: 125%;"><span></span><code>end_period <span style="color: #666666">=</span> ciclo<span style="color: #666666">.</span>at(steps<span style="color: #666666">=10_000</span>) <span style="color: #3D7B7B; font-style: italic"># {steps, samples, time}</span>
+<h2 id="training-loop">Training loop</h2>
+<p>Training loops in <code>ciclo</code> are mainly defined using the <code>loop</code> function. The <code>loop</code> function serves as a mini-language for defining training loops. It is a functional API that allows you to define a training loop as a composition of functions. <code>loop</code> takes in a state, a dataset, a dictionary of schedules and callbacks and returns the final state and a history of the logs.</p>
+<div class="highlight"><pre><span></span><code><span class="nd">@jax</span><span class="o">.</span><span class="n">jit</span>
+<span class="k">def</span> <span class="nf">train_step</span><span class="p">(</span><span class="n">state</span><span class="p">,</span> <span class="n">batch</span><span class="p">):</span>
+    <span class="c1"># update model state and create logs</span>
+    <span class="o">...</span>
+    <span class="k">return</span> <span class="n">logs</span><span class="p">,</span> <span class="n">state</span>
 
-<span style="color: #008000; font-weight: bold">for</span> elapsed, batch <span style="color: #AA22FF; font-weight: bold">in</span> ciclo<span style="color: #666666">.</span>elapse(dataset):
-    <span style="color: #3D7B7B; font-style: italic"># Elapsed(steps=..., samples=..., time=...)</span>
-    <span style="color: #008000; font-weight: bold">if</span> elapsed <span style="color: #666666">&gt;=</span> end_period:
-        <span style="color: #008000; font-weight: bold">break</span>
+<span class="n">total_steps</span> <span class="o">=</span> <span class="mi">10_000</span>
+<span class="n">state</span> <span class="o">=</span> <span class="n">create_state</span><span class="p">()</span> <span class="c1"># initial state</span>
+
+<span class="n">state</span><span class="p">,</span> <span class="n">history</span><span class="p">,</span> <span class="n">elapsed</span> <span class="o">=</span> <span class="n">ciclo</span><span class="o">.</span><span class="n">loop</span><span class="p">(</span>
+    <span class="n">state</span><span class="p">,</span> <span class="c1"># state: Pytree</span>
+    <span class="n">dataset</span><span class="p">,</span> <span class="c1"># dataset: Iterable[Batch]</span>
+    <span class="p">{</span>
+        <span class="c1"># Dict[Schedule, List[Callback]]</span>
+        <span class="n">ciclo</span><span class="o">.</span><span class="n">every</span><span class="p">(</span><span class="mi">1</span><span class="p">):</span> <span class="p">[</span><span class="n">train_step</span><span class="p">],</span>
+        <span class="n">ciclo</span><span class="o">.</span><span class="n">every</span><span class="p">(</span><span class="n">steps</span><span class="o">=</span><span class="mi">1000</span><span class="p">):</span> <span class="p">[</span><span class="n">ciclo</span><span class="o">.</span><span class="n">checkpoint</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;logdir/model&quot;</span><span class="p">)],</span>
+        <span class="n">ciclo</span><span class="o">.</span><span class="n">every</span><span class="p">(</span><span class="mi">1</span><span class="p">):</span> <span class="p">[</span><span class="n">ciclo</span><span class="o">.</span><span class="n">keras_bar</span><span class="p">(</span><span class="n">total</span><span class="o">=</span><span class="n">total_steps</span><span class="p">)],</span>
+    <span class="p">},</span>
+    <span class="n">stop</span><span class="o">=</span><span class="n">total_steps</span><span class="p">,</span> <span class="c1"># stop: Optional[int | Period]</span>
+<span class="p">)</span>
 </code></pre></div>
+<details><summary><b>Python Training Loop</b></summary>
 
-<h3 id="schedules">Schedules</h3>
-<div class="codehilite" style="background: #f8f8f8"><pre style="line-height: 125%;"><span></span><code>eval_period <span style="color: #666666">=</span> ciclo<span style="color: #666666">.</span>every(steps<span style="color: #666666">=1000</span>) <span style="color: #3D7B7B; font-style: italic"># {steps, samples, time}</span>
+<div class="highlight"><pre><span></span><code><span class="n">total_steps</span> <span class="o">=</span> <span class="mi">5_000</span>
+<span class="n">state</span> <span class="o">=</span> <span class="n">create_state</span><span class="p">()</span> <span class="c1"># initial state</span>
 
-<span style="color: #008000; font-weight: bold">for</span> elapsed, batch <span style="color: #AA22FF; font-weight: bold">in</span> ciclo<span style="color: #666666">.</span>elapse(dataset):
+<span class="n">call_checkpoint</span> <span class="o">=</span> <span class="n">ciclo</span><span class="o">.</span><span class="n">every</span><span class="p">(</span><span class="n">steps</span><span class="o">=</span><span class="mi">1000</span><span class="p">)</span> <span class="c1"># Schedule</span>
+<span class="n">checkpoint</span> <span class="o">=</span> <span class="n">ciclo</span><span class="o">.</span><span class="n">checkpoint</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;logdir/model&quot;</span><span class="p">)</span> <span class="c1"># Callback</span>
+<span class="n">keras_bar</span> <span class="o">=</span> <span class="n">ciclo</span><span class="o">.</span><span class="n">keras_bar</span><span class="p">(</span><span class="n">total</span><span class="o">=</span><span class="n">total_steps</span><span class="p">)</span> <span class="c1"># Callback</span>
+<span class="n">end_period</span> <span class="o">=</span> <span class="n">ciclo</span><span class="o">.</span><span class="n">at</span><span class="p">(</span><span class="n">total_steps</span><span class="p">)</span> <span class="c1"># Period</span>
+<span class="n">history</span> <span class="o">=</span> <span class="n">ciclo</span><span class="o">.</span><span class="n">history</span><span class="p">()</span> <span class="c1"># History</span>
+<span class="c1"># (Elapsed, Batch)</span>
+<span class="k">for</span> <span class="n">elapsed</span><span class="p">,</span> <span class="n">batch</span> <span class="ow">in</span> <span class="n">ciclo</span><span class="o">.</span><span class="n">elapse</span><span class="p">(</span><span class="n">ds_train</span><span class="o">.</span><span class="n">as_numpy_iterator</span><span class="p">()):</span>
+    <span class="n">logs</span> <span class="o">=</span> <span class="n">ciclo</span><span class="o">.</span><span class="n">logs</span><span class="p">()</span> <span class="c1"># Logs</span>
+    <span class="c1"># update logs and state</span>
+    <span class="n">logs</span><span class="o">.</span><span class="n">updates</span><span class="p">,</span> <span class="n">state</span> <span class="o">=</span> <span class="n">train_step</span><span class="p">(</span><span class="n">state</span><span class="p">,</span> <span class="n">batch</span><span class="p">)</span>
+    <span class="c1"># periodically checkpoint state</span>
+    <span class="k">if</span> <span class="n">call_checkpoint</span><span class="p">(</span><span class="n">elapsed</span><span class="p">):</span>
+        <span class="n">checkpoint</span><span class="p">(</span><span class="n">elapsed</span><span class="p">,</span> <span class="n">state</span><span class="p">)</span> <span class="c1"># serialize state</span>
 
-    <span style="color: #008000; font-weight: bold">if</span> eval_period(elapsed):
-        <span style="color: #3D7B7B; font-style: italic"># eval code</span>
+    <span class="n">keras_bar</span><span class="p">(</span><span class="n">elapsed</span><span class="p">,</span> <span class="n">logs</span><span class="p">)</span> <span class="c1"># update progress bar</span>
+    <span class="n">history</span><span class="o">.</span><span class="n">commit</span><span class="p">(</span><span class="n">elapsed</span><span class="p">,</span> <span class="n">logs</span><span class="p">)</span> <span class="c1"># commit logs to history</span>
+    <span class="c1"># stop training when total_steps is reached</span>
+    <span class="k">if</span> <span class="n">elapsed</span> <span class="o">&gt;=</span> <span class="n">end_period</span><span class="p">:</span>
+        <span class="k">break</span>
 </code></pre></div>
-
-<h3 id="callbacks">Callbacks</h3>
-<div class="codehilite" style="background: #f8f8f8"><pre style="line-height: 125%;"><span></span><code>call_checkpoint <span style="color: #666666">=</span> ciclo<span style="color: #666666">.</span>every(steps<span style="color: #666666">=1000</span>)
-checkpoint <span style="color: #666666">=</span> ciclo<span style="color: #666666">.</span>checkpoint(<span style="color: #BA2121">f&quot;logdir/my-model&quot;</span>)
-keras_bar <span style="color: #666666">=</span> ciclo<span style="color: #666666">.</span>keras_bar(total<span style="color: #666666">=</span>total_steps)
-
-<span style="color: #008000; font-weight: bold">for</span> elapsed, batch <span style="color: #AA22FF; font-weight: bold">in</span> ciclo<span style="color: #666666">.</span>elapse(dataset):
-    logs, state <span style="color: #666666">=</span> train_step(state, batch) <span style="color: #3D7B7B; font-style: italic"># jax function</span>
-
-    <span style="color: #008000; font-weight: bold">if</span> call_checkpoint(elapsed):
-        checkpoint(elapsed, state) <span style="color: #3D7B7B; font-style: italic"># state checkpointing</span>
-
-    keras_bar(elapsed, logs) <span style="color: #3D7B7B; font-style: italic"># keras progress bar</span>
-</code></pre></div>
-
-<h3 id="logging">Logging</h3>
-<div class="codehilite" style="background: #f8f8f8"><pre style="line-height: 125%;"><span></span><code><span style="color: #AA22FF">@jax</span><span style="color: #666666">.</span>jit
-<span style="color: #008000; font-weight: bold">def</span> <span style="color: #0000FF">train_step</span>(state, batch):
-    <span style="color: #666666">...</span>
-    logs <span style="color: #666666">=</span> ciclo<span style="color: #666666">.</span>logs()
-    logs<span style="color: #666666">.</span>add_loss(<span style="color: #BA2121">&quot;loss&quot;</span>: loss)
-    logs<span style="color: #666666">.</span>add_metric(<span style="color: #BA2121">&quot;accuracy&quot;</span>: jnp<span style="color: #666666">.</span>mean(jnp<span style="color: #666666">.</span>argmax(logits, <span style="color: #666666">-1</span>) <span style="color: #666666">==</span> labels))
-    <span style="color: #008000; font-weight: bold">return</span> logs, state
-</code></pre></div>
-
-<div class="codehilite" style="background: #f8f8f8"><pre style="line-height: 125%;"><span></span><code>history <span style="color: #666666">=</span> ciclo<span style="color: #666666">.</span>history()
-
-<span style="color: #008000; font-weight: bold">for</span> elapsed, batch <span style="color: #AA22FF; font-weight: bold">in</span> ciclo<span style="color: #666666">.</span>elapse(dataset):
-    logs <span style="color: #666666">=</span> ciclo<span style="color: #666666">.</span>logs()
-    <span style="color: #3D7B7B; font-style: italic"># merge log updates</span>
-    logs<span style="color: #666666">.</span>updates, state <span style="color: #666666">=</span> train_step(state, batch)
-    <span style="color: #3D7B7B; font-style: italic"># commit logs</span>
-    history<span style="color: #666666">.</span>commit(elapsed, logs)
-<span style="color: #3D7B7B; font-style: italic"># collect log values (e.g. for plotting)</span>
-steps, loss, accuracy <span style="color: #666666">=</span> history<span style="color: #666666">.</span>collect(<span style="color: #BA2121">&quot;steps&quot;</span>, <span style="color: #BA2121">&quot;loss&quot;</span>, <span style="color: #BA2121">&quot;accuracy&quot;</span>)
-</code></pre></div>
-
-<details><summary>Complete Example</summary>
-
-
-<div class="codehilite" style="background: #f8f8f8"><pre style="line-height: 125%;"><span></span><code><span style="color: #AA22FF">@jax</span><span style="color: #666666">.</span>jit
-<span style="color: #008000; font-weight: bold">def</span> <span style="color: #0000FF">train_step</span>(state: TrainState, batch):
-    <span style="color: #666666">...</span>
-    logs <span style="color: #666666">=</span> ciclo<span style="color: #666666">.</span>logs()
-    logs<span style="color: #666666">.</span>add_metric(<span style="color: #BA2121">&quot;loss&quot;</span>: loss)
-    logs<span style="color: #666666">.</span>add_metric(<span style="color: #BA2121">&quot;accuracy&quot;</span>: jnp<span style="color: #666666">.</span>mean(jnp<span style="color: #666666">.</span>argmax(logits, <span style="color: #666666">-1</span>) <span style="color: #666666">==</span> labels))
-    <span style="color: #008000; font-weight: bold">return</span> logs, state
-
-total_steps <span style="color: #666666">=</span> <span style="color: #666666">10_000</span>
-call_checkpoint <span style="color: #666666">=</span> ciclo<span style="color: #666666">.</span>every(steps<span style="color: #666666">=1000</span>)
-checkpoint <span style="color: #666666">=</span> ciclo<span style="color: #666666">.</span>checkpoint(<span style="color: #BA2121">f&quot;logdir/my-model&quot;</span>)
-keras_bar <span style="color: #666666">=</span> ciclo<span style="color: #666666">.</span>keras_bar(total<span style="color: #666666">=</span>total_steps)
-end_period <span style="color: #666666">=</span> ciclo<span style="color: #666666">.</span>at(steps<span style="color: #666666">=</span>total_steps)
-history <span style="color: #666666">=</span> ciclo<span style="color: #666666">.</span>history()
-
-<span style="color: #008000; font-weight: bold">for</span> elapsed, batch <span style="color: #AA22FF; font-weight: bold">in</span> ciclo<span style="color: #666666">.</span>elapse(dataset):
-    logs <span style="color: #666666">=</span> ciclo<span style="color: #666666">.</span>logs()
-    logs<span style="color: #666666">.</span>updates, state <span style="color: #666666">=</span> train_step(state, batch)
-
-    <span style="color: #008000; font-weight: bold">if</span> call_checkpoint(elapsed):
-        checkpoint(elapsed, state)
-
-    keras_bar(elapsed, logs)
-    history<span style="color: #666666">.</span>commit(elapsed, logs)
-    <span style="color: #008000; font-weight: bold">if</span> elapsed <span style="color: #666666">&gt;=</span> end_period:
-        <span style="color: #008000; font-weight: bold">break</span>
-
-steps, loss, accuracy <span style="color: #666666">=</span> history<span style="color: #666666">.</span>collect(<span style="color: #BA2121">&quot;steps&quot;</span>, <span style="color: #BA2121">&quot;loss&quot;</span>, <span style="color: #BA2121">&quot;accuracy&quot;</span>)
-</code></pre></div>
-
-
-
-</details>
-<p><br></p>
-<hr />
-<h2 id="loop-language">Loop language</h2>
-<div class="codehilite" style="background: #f8f8f8"><pre style="line-height: 125%;"><span></span><code><span style="color: #008000; font-weight: bold">def</span> <span style="color: #0000FF">loop</span>(
-    state: State,
-    dataset: Iterable[Batch],
-    tasks: {Schedule: [Callback]},
-) <span style="color: #666666">-&gt;</span> (State, History, Elapsed)
-</code></pre></div>
-
-<div class="codehilite" style="background: #f8f8f8"><pre style="line-height: 125%;"><span></span><code>total_steps <span style="color: #666666">=</span> <span style="color: #666666">10_000</span>
-
-state, history, elapsed <span style="color: #666666">=</span> ciclo<span style="color: #666666">.</span>loop(
-    state,
-    dataset,
-    {
-        ciclo<span style="color: #666666">.</span>every(<span style="color: #666666">1</span>): [train_step],
-        ciclo<span style="color: #666666">.</span>every(steps<span style="color: #666666">=1000</span>): [ciclo<span style="color: #666666">.</span>checkpoint(<span style="color: #BA2121">f&quot;logdir/my-model&quot;</span>)],
-        ciclo<span style="color: #666666">.</span>every(<span style="color: #666666">1</span>): [ciclo<span style="color: #666666">.</span>keras_bar(total<span style="color: #666666">=</span>total_steps)],
-    },
-    stop<span style="color: #666666">=</span>ciclo<span style="color: #666666">.</span>at(steps<span style="color: #666666">=</span>total_steps)
-)
-</code></pre></div>
-
-<details><summary>Syntactic Sugar</summary>
-
-If you have a single callback for a given schedule you can pass it directly. Furthermore, for `CallbackBase` instances (all callbacks in Ciclo implement this) that need to be run at every iteration, you can avoid having to specify the schedule by using the Mapping expansion `'**'` operator.
-
-| Syntax | Expansion |
-| --- | --- |
-| `schedule: callback` | `schedule: [callback]` |
-| `**callback` | `every(1): [callback]` |
-
-
-<div class="codehilite" style="background: #f8f8f8"><pre style="line-height: 125%;"><span></span><code>  total_steps <span style="color: #666666">=</span> <span style="color: #666666">10_000</span>
-
-  state, history, elapsed <span style="color: #666666">=</span> ciclo<span style="color: #666666">.</span>loop(
-    state,
-    dataset,
-    {
-      ciclo<span style="color: #666666">.</span>every(<span style="color: #666666">1</span>): train_step,
-      ciclo<span style="color: #666666">.</span>every(steps<span style="color: #666666">=1000</span>): ciclo<span style="color: #666666">.</span>checkpoint(<span style="color: #BA2121">f&quot;logdir/my-model&quot;</span>),
-      <span style="color: #666666">**</span>ciclo<span style="color: #666666">.</span>keras_bar(total<span style="color: #666666">=</span>total_steps),
-    },
-    stop<span style="color: #666666">=</span>ciclo<span style="color: #666666">.</span>at(steps<span style="color: #666666">=</span>total_steps)
-  )
-</code></pre></div>
-
-
 
 </details>
 <p><br></p>
 <h3 id="loop-function-callbacks">Loop function callbacks</h3>
-<div class="codehilite" style="background: #f8f8f8"><pre style="line-height: 125%;"><span></span><code><span style="color: #008000; font-weight: bold">def</span> <span style="color: #0000FF">f</span>(
-    [state, batch, elapsed, loop_state] <span style="color: #3D7B7B; font-style: italic"># accept between 0 and 4 args</span>
-) <span style="color: #666666">-&gt;</span> (logs <span style="color: #666666">|</span> <span style="color: #008000; font-weight: bold">None</span>, state <span style="color: #666666">|</span> <span style="color: #008000; font-weight: bold">None</span>) <span style="color: #666666">|</span> logs <span style="color: #666666">|</span> state <span style="color: #666666">|</span> <span style="color: #008000; font-weight: bold">None</span>
+<p><div class="highlight"><pre><span></span><code><span class="k">def</span> <span class="nf">f</span><span class="p">(</span> <span class="c1"># accepts between 0 and 4 arguments</span>
+    <span class="p">[</span><span class="n">state</span><span class="p">,</span> <span class="n">batch</span><span class="p">,</span> <span class="n">elapsed</span><span class="p">,</span> <span class="n">loop_state</span><span class="p">]</span> 
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="p">(</span><span class="n">logs</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="n">state</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">|</span> <span class="n">logs</span> <span class="o">|</span> <span class="n">state</span> <span class="o">|</span> <span class="kc">None</span>
 </code></pre></div>
-
-<p>Where:</p>
+Where:</p>
 <ul>
 <li>state: <code>Any</code>, cannot be <code>tuple</code> or <code>dict</code> for single return value</li>
 <li>batch: <code>Any</code>, current batch</li>
@@ -634,8 +493,9 @@ If you have a single callback for a given schedule you can pass it directly. Fur
     <script id="__config" type="application/json">{"base": ".", "features": [], "search": "assets/javascripts/workers/search.16e2a7d4.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.config.lang": "en", "search.config.pipeline": "trimmer, stopWordFilter", "search.config.separator": "[\\s\\-]+", "search.placeholder": "Search", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version.title": "Select version"}}</script>
     
     
-      <script src="assets/javascripts/bundle.d6c3db9e.min.js"></script>
+      <script src="assets/javascripts/bundle.5a2dcb6a.min.js"></script>
       
+    
     
   </body>
 </html>

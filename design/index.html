@@ -17,10 +17,10 @@
       
     
     
-      <link rel="stylesheet" href="../assets/stylesheets/main.472b142f.min.css">
+      <link rel="stylesheet" href="../assets/stylesheets/main.975780f9.min.css">
       
         
-        <link rel="stylesheet" href="../assets/stylesheets/palette.08040f6c.min.css">
+        <link rel="stylesheet" href="../assets/stylesheets/palette.2505c338.min.css">
         
       
       
@@ -270,27 +270,25 @@
 
 <h2 id="motivation">Motivation</h2>
 <p>We want to define composable APIs that enable the creation of complex training loops and higher-level JAX frameworks.</p>
-<div class="codehilite" style="background: #f8f8f8"><pre style="line-height: 125%;"><span></span><code>total_steps <span style="color: #666666">=</span> <span style="color: #666666">10_000</span>
+<div class="highlight"><pre><span></span><code><span class="n">total_steps</span> <span class="o">=</span> <span class="mi">10_000</span>
 
-_, history, state <span style="color: #666666">=</span> loop(
-    state,
-    dataset,
-    {
-        every(steps<span style="color: #666666">=1</span>): [
-            train_step, 
-            keras_bar(total<span style="color: #666666">=</span>total_steps),
-        ],
-    },
-    stop<span style="color: #666666">=</span>total_steps,
-)
+<span class="n">_</span><span class="p">,</span> <span class="n">history</span><span class="p">,</span> <span class="n">state</span> <span class="o">=</span> <span class="n">loop</span><span class="p">(</span>
+    <span class="n">state</span><span class="p">,</span>
+    <span class="n">dataset</span><span class="p">,</span>
+    <span class="p">{</span>
+        <span class="n">every</span><span class="p">(</span><span class="n">steps</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span> <span class="p">[</span>
+            <span class="n">train_step</span><span class="p">,</span> 
+            <span class="n">keras_bar</span><span class="p">(</span><span class="n">total</span><span class="o">=</span><span class="n">total_steps</span><span class="p">),</span>
+        <span class="p">],</span>
+    <span class="p">},</span>
+    <span class="n">stop</span><span class="o">=</span><span class="n">total_steps</span><span class="p">,</span>
+<span class="p">)</span>
 </code></pre></div>
-
 <h2 id="callback-spec">Callback Spec</h2>
-<div class="codehilite" style="background: #f8f8f8"><pre style="line-height: 125%;"><span></span><code><span style="color: #008000; font-weight: bold">def</span> <span style="color: #0000FF">callback</span>(
-    state, batch, [broadcasts, statics]
-) <span style="color: #666666">-&gt;</span> (logs, state) <span style="color: #666666">|</span> <span style="color: #008000; font-weight: bold">None</span>:
+<div class="highlight"><pre><span></span><code><span class="k">def</span> <span class="nf">callback</span><span class="p">(</span>
+    <span class="n">state</span><span class="p">,</span> <span class="n">batch</span><span class="p">,</span> <span class="p">[</span><span class="n">broadcasts</span><span class="p">,</span> <span class="n">statics</span><span class="p">]</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="p">(</span><span class="n">logs</span><span class="p">,</span> <span class="n">state</span><span class="p">)</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
 </code></pre></div>
-
 <details><summary>Description</summary>
 
 Where:
@@ -312,11 +310,10 @@ Returns can be either a 2-tuple of `(logs, state)` or `None`, additionally `logs
 <p><br></p>
 <h2 id="loops">Loops</h2>
 <h3 id="loop-callbacks">Loop callbacks</h3>
-<div class="codehilite" style="background: #f8f8f8"><pre style="line-height: 125%;"><span></span><code><span style="color: #008000; font-weight: bold">def</span> <span style="color: #0000FF">callback</span>(
-    state, batch, [elapsed, loop]
-) <span style="color: #666666">-&gt;</span> (logs, state) <span style="color: #666666">|</span> <span style="color: #008000; font-weight: bold">None</span>:
+<div class="highlight"><pre><span></span><code><span class="k">def</span> <span class="nf">callback</span><span class="p">(</span>
+    <span class="n">state</span><span class="p">,</span> <span class="n">batch</span><span class="p">,</span> <span class="p">[</span><span class="n">elapsed</span><span class="p">,</span> <span class="n">loop</span><span class="p">]</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="p">(</span><span class="n">logs</span><span class="p">,</span> <span class="n">state</span><span class="p">)</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
 </code></pre></div>
-
 <details><summary>Description</summary>
 
 Loop callbacks implement the callback spec with the following instantiation: 
@@ -327,9 +324,8 @@ Loop callbacks implement the callback spec with the following instantiation:
 </details>
 <p><br></p>
 <h3 id="schedules">Schedules</h3>
-<div class="codehilite" style="background: #f8f8f8"><pre style="line-height: 125%;"><span></span><code><span style="color: #008000; font-weight: bold">def</span> <span style="color: #0000FF">schedule</span>(elapsed: Elapsed) <span style="color: #666666">-&gt;</span> <span style="color: #008000">bool</span>:
+<div class="highlight"><pre><span></span><code><span class="k">def</span> <span class="nf">schedule</span><span class="p">(</span><span class="n">elapsed</span><span class="p">:</span> <span class="n">Elapsed</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
 </code></pre></div>
-
 <details><summary>Description</summary>
 
 `schedule`s take in an `elapsed` instance and returns a boolean indicating whether that time is within the schedule.
@@ -337,11 +333,10 @@ Loop callbacks implement the callback spec with the following instantiation:
 </details>
 <p><br></p>
 <h3 id="loops_1">Loops</h3>
-<div class="codehilite" style="background: #f8f8f8"><pre style="line-height: 125%;"><span></span><code><span style="color: #008000; font-weight: bold">def</span> <span style="color: #0000FF">loop</span>(
-    state, dataset: [batch], tasks: {schedule: [callback]}
-) <span style="color: #666666">-&gt;</span> (state, [logs], elapsed):
+<div class="highlight"><pre><span></span><code><span class="k">def</span> <span class="nf">loop</span><span class="p">(</span>
+    <span class="n">state</span><span class="p">,</span> <span class="n">dataset</span><span class="p">:</span> <span class="p">[</span><span class="n">batch</span><span class="p">],</span> <span class="n">tasks</span><span class="p">:</span> <span class="p">{</span><span class="n">schedule</span><span class="p">:</span> <span class="p">[</span><span class="n">callback</span><span class="p">]}</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="p">(</span><span class="n">state</span><span class="p">,</span> <span class="p">[</span><span class="n">logs</span><span class="p">],</span> <span class="n">elapsed</span><span class="p">):</span>
 </code></pre></div>
-
 <details><summary>Description</summary>
 
 Loops are comprised of a `state` that is threaded through the loop, a `dataset` that is iterated over, and a dictionary of `schedules` to `callbacks` that execute various tasks such as training, logging, evaluation, etc.
@@ -353,50 +348,44 @@ Loops return the final `state`, a list of `logs` from each step, and an `elapsed
 <h2 id="examples">Examples</h2>
 <details><summary>Sample Usage with Flax</summary>
 
+<div class="highlight"><pre><span></span><code><span class="nd">@jax</span><span class="o">.</span><span class="n">jit</span>
+<span class="k">def</span> <span class="nf">train_step</span><span class="p">(</span><span class="n">state</span><span class="p">:</span> <span class="n">TrainState</span><span class="p">,</span> <span class="n">batch</span><span class="p">):</span>
+    <span class="n">inputs</span><span class="p">,</span> <span class="n">labels</span> <span class="o">=</span> <span class="n">batch</span><span class="p">[</span><span class="s2">&quot;image&quot;</span><span class="p">],</span> <span class="n">batch</span><span class="p">[</span><span class="s2">&quot;label&quot;</span><span class="p">]</span>
 
-<div class="codehilite" style="background: #f8f8f8"><pre style="line-height: 125%;"><span></span><code><span style="color: #AA22FF">@jax</span><span style="color: #666666">.</span>jit
-<span style="color: #008000; font-weight: bold">def</span> <span style="color: #0000FF">train_step</span>(state: TrainState, batch):
-    inputs, labels <span style="color: #666666">=</span> batch[<span style="color: #BA2121">&quot;image&quot;</span>], batch[<span style="color: #BA2121">&quot;label&quot;</span>]
+    <span class="k">def</span> <span class="nf">loss_fn</span><span class="p">(</span><span class="n">params</span><span class="p">):</span>
+        <span class="n">logits</span> <span class="o">=</span> <span class="n">state</span><span class="o">.</span><span class="n">apply_fn</span><span class="p">({</span><span class="s2">&quot;params&quot;</span><span class="p">:</span> <span class="n">params</span><span class="p">},</span> <span class="n">inputs</span><span class="p">)</span>
+        <span class="n">loss</span> <span class="o">=</span> <span class="n">optax</span><span class="o">.</span><span class="n">softmax_cross_entropy_with_integer_labels</span><span class="p">(</span>
+            <span class="n">logits</span><span class="o">=</span><span class="n">logits</span><span class="p">,</span> <span class="n">labels</span><span class="o">=</span><span class="n">labels</span>
+        <span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">loss</span><span class="p">,</span> <span class="n">logits</span>
 
-    <span style="color: #008000; font-weight: bold">def</span> <span style="color: #0000FF">loss_fn</span>(params):
-        logits <span style="color: #666666">=</span> state<span style="color: #666666">.</span>apply_fn({<span style="color: #BA2121">&quot;params&quot;</span>: params}, inputs)
-        loss <span style="color: #666666">=</span> optax<span style="color: #666666">.</span>softmax_cross_entropy_with_integer_labels(
-            logits<span style="color: #666666">=</span>logits, labels<span style="color: #666666">=</span>labels
-        )<span style="color: #666666">.</span>mean()
-        <span style="color: #008000; font-weight: bold">return</span> loss, logits
-
-    grad_fn <span style="color: #666666">=</span> jax<span style="color: #666666">.</span>value_and_grad(loss_fn, has_aux<span style="color: #666666">=</span><span style="color: #008000; font-weight: bold">True</span>)
-    (loss, logits), grads <span style="color: #666666">=</span> (state<span style="color: #666666">.</span>params)
-    state <span style="color: #666666">=</span> state<span style="color: #666666">.</span>apply_gradients(grads<span style="color: #666666">=</span>grads)
-    logs <span style="color: #666666">=</span> {
-        <span style="color: #BA2121">&quot;loss&quot;</span>: loss, 
-        <span style="color: #BA2121">&quot;accuracy&quot;</span>: jnp<span style="color: #666666">.</span>mean(jnp<span style="color: #666666">.</span>argmax(logits, <span style="color: #666666">-1</span>) <span style="color: #666666">==</span> labels)
-    }
-    <span style="color: #008000; font-weight: bold">return</span> logs, state
+    <span class="n">grad_fn</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">value_and_grad</span><span class="p">(</span><span class="n">loss_fn</span><span class="p">,</span> <span class="n">has_aux</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="p">(</span><span class="n">loss</span><span class="p">,</span> <span class="n">logits</span><span class="p">),</span> <span class="n">grads</span> <span class="o">=</span> <span class="p">(</span><span class="n">state</span><span class="o">.</span><span class="n">params</span><span class="p">)</span>
+    <span class="n">state</span> <span class="o">=</span> <span class="n">state</span><span class="o">.</span><span class="n">apply_gradients</span><span class="p">(</span><span class="n">grads</span><span class="o">=</span><span class="n">grads</span><span class="p">)</span>
+    <span class="n">logs</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;loss&quot;</span><span class="p">:</span> <span class="n">loss</span><span class="p">,</span> 
+        <span class="s2">&quot;accuracy&quot;</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">jnp</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">logits</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="o">==</span> <span class="n">labels</span><span class="p">)</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="n">logs</span><span class="p">,</span> <span class="n">state</span>
 
 
-_, history, state <span style="color: #666666">=</span> loop(
-    state, <span style="color: #3D7B7B; font-style: italic"># TrainState</span>
-    train_ds<span style="color: #666666">.</span>as_numpy_iterator(),
-    {
-        every(<span style="color: #666666">1</span>): [
-            train_step, 
-            keras_bar(total<span style="color: #666666">=</span>total_steps), <span style="color: #3D7B7B; font-style: italic"># progress bar</span>
-        ],
-        every(<span style="color: #666666">100</span>): [
-            Profile(logdir<span style="color: #666666">=</span>logdir), <span style="color: #3D7B7B; font-style: italic"># clu.periodic_actions</span>
-        ],
-    },
-    stop<span style="color: #666666">=</span>total_steps,
-)
+<span class="n">_</span><span class="p">,</span> <span class="n">history</span><span class="p">,</span> <span class="n">state</span> <span class="o">=</span> <span class="n">loop</span><span class="p">(</span>
+    <span class="n">state</span><span class="p">,</span> <span class="c1"># TrainState</span>
+    <span class="n">train_ds</span><span class="o">.</span><span class="n">as_numpy_iterator</span><span class="p">(),</span>
+    <span class="p">{</span>
+        <span class="n">every</span><span class="p">(</span><span class="mi">1</span><span class="p">):</span> <span class="p">[</span>
+            <span class="n">train_step</span><span class="p">,</span> 
+            <span class="n">keras_bar</span><span class="p">(</span><span class="n">total</span><span class="o">=</span><span class="n">total_steps</span><span class="p">),</span> <span class="c1"># progress bar</span>
+        <span class="p">],</span>
+        <span class="n">every</span><span class="p">(</span><span class="mi">100</span><span class="p">):</span> <span class="p">[</span>
+            <span class="n">Profile</span><span class="p">(</span><span class="n">logdir</span><span class="o">=</span><span class="n">logdir</span><span class="p">),</span> <span class="c1"># clu.periodic_actions</span>
+        <span class="p">],</span>
+    <span class="p">},</span>
+    <span class="n">stop</span><span class="o">=</span><span class="n">total_steps</span><span class="p">,</span>
+<span class="p">)</span>
 </code></pre></div>
-
-
-
-<div class="codehilite" style="background: #f8f8f8"><pre style="line-height: 125%;"><span></span><code>4650/10000 [============&gt;.................] - ETA: 8s - accuracy: 0.9779 - loss: 0.0718  
+<div class="highlight"><pre><span></span><code>4650/10000 [============&gt;.................] - ETA: 8s - accuracy: 0.9779 - loss: 0.0718  
 </code></pre></div>
-
-
 
 </details>
 <p><br></p>
@@ -440,8 +429,9 @@ _, history, state <span style="color: #666666">=</span> loop(
     <script id="__config" type="application/json">{"base": "..", "features": [], "search": "../assets/javascripts/workers/search.16e2a7d4.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.config.lang": "en", "search.config.pipeline": "trimmer, stopWordFilter", "search.config.separator": "[\\s\\-]+", "search.placeholder": "Search", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version.title": "Select version"}}</script>
     
     
-      <script src="../assets/javascripts/bundle.d6c3db9e.min.js"></script>
+      <script src="../assets/javascripts/bundle.5a2dcb6a.min.js"></script>
       
+    
     
   </body>
 </html>
