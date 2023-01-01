@@ -85,18 +85,36 @@ def train_step(state: TrainState, batch):
 
 ## Training loop
 
+=== "loop"
+
+    ```python
+    total_steps = 5_000
+    state = create_state() # initial state
+
+    state, history, elapsed = ciclo.loop(
+        state,
+        ds_train.as_numpy_iterator(),
+        {
+            # Schedule: List[Callback]
+            ciclo.every(1): [train_step],
+            ciclo.every(steps=1000): [
+                ciclo.checkpoint(f"logdir/model")
+            ],
+            ciclo.every(1): [ciclo.keras_bar(total=total_steps)],
+        },
+        stop=total_steps,
+    )
+    ```
 === "manual"
 
     ```python
-    from time import time
-
     total_steps = 5_000
-    call_checkpoint = ciclo.every(steps=1000) # Schedule
-    checkpoint = ciclo.checkpoint(f"logdir/getting_started/{int(time())}") # Callback
-    keras_bar = ciclo.keras_bar(total=total_steps, interval=0.4) # Callback
-    end_period = ciclo.at(total_steps) # Period
-
     state = create_state() # initial state
+
+    call_checkpoint = ciclo.every(steps=1000) # Schedule
+    checkpoint = ciclo.checkpoint(f"logdir/model") # Callback
+    keras_bar = ciclo.keras_bar(total=total_steps) # Callback
+    end_period = ciclo.at(total_steps) # Period
     history = ciclo.history() # History
     # (Elapsed, Batch)
     for elapsed, batch in ciclo.elapse(ds_train.as_numpy_iterator()):
@@ -105,7 +123,7 @@ def train_step(state: TrainState, batch):
         logs.updates, state = train_step(state, batch)
         # periodically checkpoint state
         if call_checkpoint(elapsed):
-            checkpoint(elapsed, state) # save state
+            checkpoint(elapsed, state) # serialize state
 
         keras_bar(elapsed, logs) # update progress bar
         history.commit(elapsed, logs) # commit logs to history
@@ -114,26 +132,6 @@ def train_step(state: TrainState, batch):
             break
     ```
 
-=== "loop"
-
-    ```python
-    total_steps = 5_000
-    state = create_state()
-
-    state, history, elapsed = ciclo.loop(
-        state,
-        ds_train.as_numpy_iterator(),
-        {
-            # Schedule: [Callback]
-            ciclo.every(1): [train_step],
-            ciclo.every(steps=1000): [
-                ciclo.checkpoint(f"logdir/getting_started/{int(time())}")
-            ],
-            ciclo.every(1): [ciclo.keras_bar(total=total_steps, interval=0.4)],
-        },
-        stop=total_steps,
-    )
-    ```
 Where:
 
 * `every` is a simple periodic `Schedule`
@@ -187,7 +185,7 @@ state, history, elapsed = ciclo.loop(
         ciclo.every(steps=1000): ciclo.checkpoint(
             f"logdir/getting_started/{int(time())}"
         ),
-        **ciclo.keras_bar(total=total_steps, interval=0.4),
+        **ciclo.keras_bar(total=total_steps),
     },
     stop=total_steps,
 )

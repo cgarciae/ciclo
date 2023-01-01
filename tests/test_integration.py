@@ -69,9 +69,7 @@ class TestIntegration:
                 ds_train,
                 {
                     ciclo.every(1): train_step,
-                    ciclo.every(2, steps_offset=1): ciclo.checkpoint(
-                        f"{logdir}/model.ckpt"
-                    ),
+                    ciclo.every(2, steps_offset=1): ciclo.checkpoint(f"{logdir}/model"),
                     **ciclo.keras_bar(total=total_steps),
                 },
                 stop=total_steps,
@@ -79,7 +77,7 @@ class TestIntegration:
 
             steps, loss, accuracy = history.collect("steps", "loss", "accuracy")
 
-            assert Path(f"{logdir}/model.ckpt").exists()
+            assert Path(f"{logdir}/model").exists()
             assert len(history) == total_steps
             assert len(loss) == len(accuracy) == total_steps
             assert steps == [1, 2, 3]
@@ -168,7 +166,7 @@ class TestIntegration:
                             ),
                         ),
                         ciclo.checkpoint(
-                            f"{logdir}/model.ckpt",
+                            f"{logdir}/model",
                             monitor="accuracy_valid",
                             mode="max",
                         ),
@@ -185,7 +183,7 @@ class TestIntegration:
 
             steps, loss, accuracy = history.collect("steps", "loss", "accuracy")
 
-            assert Path(f"{logdir}/model.ckpt").exists()
+            assert Path(f"{logdir}/model").exists()
             assert len(history) == total_steps
             assert len(loss) == len(accuracy) == total_steps
             assert steps == list(range(1, total_steps + 1))

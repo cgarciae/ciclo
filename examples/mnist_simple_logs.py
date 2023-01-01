@@ -33,6 +33,7 @@ class Linear(nn.Module):
 def train_step(state: TrainState, batch):
     inputs, labels = batch["image"], batch["label"]
 
+    # update the model's state
     def loss_fn(params):
         logits = state.apply_fn({"params": params}, inputs)
         loss = optax.softmax_cross_entropy_with_integer_labels(
@@ -42,9 +43,12 @@ def train_step(state: TrainState, batch):
 
     (loss, logits), grads = jax.value_and_grad(loss_fn, has_aux=True)(state.params)
     state = state.apply_gradients(grads=grads)
+
+    # add logs
     logs = ciclo.logs()
     logs.add_metric("loss", loss)
     logs.add_metric("accuracy", jnp.mean(jnp.argmax(logits, -1) == labels))
+
     return logs, state
 
 
