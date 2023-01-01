@@ -76,7 +76,7 @@ def eval_step(state: TrainState, batch):
     ).mean()
     metrics = state.metrics.update(loss=loss, logits=logits, labels=batch["label"])
     logs = ciclo.logs()
-    logs.add_metrics(metrics.compute(), stateful=True)
+    logs.add_stateful_metrics(metrics.compute())
     return logs, state.replace(metrics=metrics)
 
 

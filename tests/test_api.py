@@ -54,7 +54,7 @@ class TestAPI:
         logs = ciclo.logs()
         logs.add_loss("some_loss", 1)
         logs.add_metric("some_metric", 2)
-        logs.add_metric("other_metric", 3, stateful=True)
+        logs.add_stateful_metric("other_metric", 3)
 
         assert logs["losses"] == {"some_loss": 1}
         assert logs["metrics"] == {"some_metric": 2}

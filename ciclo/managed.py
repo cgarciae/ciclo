@@ -136,7 +136,7 @@ class ManagedStep(LoopCallbackBase[S]):
                 logs[collection] = strategy.lower_replicated(logs[collection])
             elif collection in ("losses", "metrics"):
                 logs[collection] = strategy.lower_averageable(logs[collection])
-            elif collection == "per_sample_outputs":
+            elif collection == "outputs":
                 logs[collection] = strategy.lower_tileable(logs[collection])
             else:
                 logs[collection] = strategy.lower_sharded(logs[collection])
