@@ -61,26 +61,39 @@ class Logs(LogsLike):
 
         return self
 
-    def add_metric(self, name: str, value: Any, *, stateful: bool = False) -> "Logs":
+    def add_metric(self, name: str, value: Any) -> "Logs":
         if isinstance(value, CluMetric):
-            stateful = True
-        collection = "metrics" if not stateful else "stateful_metrics"
-        return self.add_entry(collection, name, value)
+            raise ValueError(
+                f"Metric '{name}' is a clu Metric which is stateful, use 'add_stateful_metric' instead"
+            )
+        return self.add_entry("metrics", name, value)
 
-    def add_metrics(self, metrics: Dict[str, Any], *, stateful: bool = False):
+    def add_metrics(self, metrics: Dict[str, Any]):
         for name, value in metrics.items():
-            self.add_metric(name, value, stateful=stateful)
+            self.add_metric(name, value)
 
-    def add_loss(self, name: str, value: Any, *, add_metric: bool = False):
+    def add_stateful_metric(self, name: str, value: Any) -> "Logs":
+        return self.add_entry("stateful_metrics", name, value)
+
+    def add_stateful_metrics(self, metrics: Dict[str, Any]) -> "Logs":
+        for name, value in metrics.items():
+            self.add_stateful_metric(name, value)
+        return self
+
+    def add_loss(self, name: str, value: Any, *, add_metric: bool = False) -> "Logs":
         self.add_entry("losses", name, value)
         if add_metric:
             self.add_metric(name, value)
+        return self
 
-    def add_losses(self, losses: Dict[str, Any], *, add_metrics: bool = False):
+    def add_losses(
+        self, losses: Dict[str, Any], *, add_metrics: bool = False
+    ) -> "Logs":
         for name, value in losses.items():
             self.add_loss(name, value, add_metric=add_metrics)
+        return self
 
-    def add_output(self, name: str, value: Any, *, per_sample: bool = True):
+    def add_output(self, name: str, value: Any, *, per_sample: bool = True) -> "Logs":
         collection = "per_sample_outputs" if per_sample else "outputs"
         self.add_entry(collection, name, value)
 
