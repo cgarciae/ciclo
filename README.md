@@ -1,3 +1,5 @@
+[![codecov](https://codecov.io/gh/cgarciae/ciclo/branch/main/graph/badge.svg?token=3IKEUAU3C8)](https://codecov.io/gh/cgarciae/ciclo)
+
 # Ciclo
 _Training loop utilities and abstractions for JAX_
 
