@@ -1,21 +1,25 @@
+[![codecov](https://codecov.io/gh/cgarciae/ciclo/branch/main/graph/badge.svg?token=3IKEUAU3C8)](https://codecov.io/gh/cgarciae/ciclo)
+
 # Ciclo
 _Training loop utilities and abstractions for JAX_
 
-`ciclo` is a library for training loops in JAX. It provides a set of utilities and abstractions to build complex training loops and higher-level frameworks.
+`ciclo` is a functional library for training loops in JAX. It provides a set of utilities and abstractions to build complex training loops with any JAX framework. `ciclo` defines a set of building blocks that naturally compose together so they can scale up to build higher-level abstractions.
 
 **Features**
 
 ✔️ Training utilities <br>
 ✔️ Loop language <br>
-🧪 Managed API (Distributed Strategies) <br>
-💡 Predefined Loops (e.g. `fit`) <br>
-💡 Framework support <br>
+🧪 [experimental] Managed API (simplified training + parallelism) <br>
+💡 [idea] Predefined Loops (e.g. `fit`) <br>
+💡 [idea] Framework support <br>
 
 <details><summary><b>Why Ciclo?</b></summary>
 
 
 - In JAX functions are first-class citizens, instead of monolithic classes like `Model` or `Trainer` in other frameworks, there is a lot of benefit in a functional API for the training interface as well.<br>
-- The JAX community is very focused on research, and as such there is a lot of interest in flexibility and control over the training loop. For this reason, `ciclo` provides some basic utilities and lets the user choose their desired level of abstraction.<br><br>
+- The JAX community is very focused on research, and as such there is a lot of interest in flexibility and control over the training loop. For this reason, `ciclo` provides some basic utilities and lets the user choose their desired level of abstraction.<br>
+- Choosing the wrong abstractions can often break a framework, when this happens users often abandone the framework altogether. `ciclo` tries to avoid this by providing a set of utilities than can stand on their own so they can be useful even if the user decides to build their own training loop, but allows them to compose together and be used with ever increasing levels of abstraction. Ideally in the future a user should be able to pick anything from a Keras-like simplified experience to defining their own loops, or just coding the training loop manually and still have a good experience.<br><br>
+
 
 <b>Comparison with other libraries</b><br><br>
 
@@ -24,186 +28,87 @@ _Training loop utilities and abstractions for JAX_
 
 </details>
 
-### Installation
+## Installation
 
 ```bash
 pip install ciclo
 ```
 
----
+## Status
+Ciclo is still in early development, the API is subject to change, expect things to break. If you are interested in contributing, please reach out.
   
-## Training utilities
+## Utilities
 
-* Time tracking: `at`, `elapse`, ...
-* Schedules: `every`, ...
-* Callbacks: `checkpoint`, `early_stopping`, `keras_bar`, ...
-* Logging: `logs`, `history`
+* Time tracking
+* Logging
+* Schedules
+* Callbacks
+* Loops
+* Parallelism [experimental]
 
-
-### Time Tracking
-
-  
-```python
-end_period = ciclo.at(steps=10_000) # {steps, samples, time}
-
-for elapsed, batch in ciclo.elapse(dataset):
-    # Elapsed(steps=..., samples=..., time=...)
-    if elapsed >= end_period:
-        break
-```
-
-### Schedules
-
-  
-```python
-eval_period = ciclo.every(steps=1000) # {steps, samples, time}
-
-for elapsed, batch in ciclo.elapse(dataset):
-
-    if eval_period(elapsed):
-        # eval code
-```
-
-
-### Callbacks
-
-  
-```python
-call_checkpoint = ciclo.every(steps=1000)
-checkpoint = ciclo.checkpoint(f"logdir/my-model")
-keras_bar = ciclo.keras_bar(total=total_steps)
-
-for elapsed, batch in ciclo.elapse(dataset):
-    logs, state = train_step(state, batch) # jax function
-
-    if call_checkpoint(elapsed):
-        checkpoint(elapsed, state) # state checkpointing
-
-    keras_bar(elapsed, logs) # keras progress bar
-```
-
-
-### Logging
+## Training loop
+Training loops in `ciclo` are mainly defined using the `loop` function. The `loop` function serves as a mini-language for defining training loops. It is a functional API that allows you to define a training loop as a composition of functions. `loop` takes in a state, a dataset, a dictionary of schedules and callbacks and returns the final state and a history of the logs.
 
 ```python
 @jax.jit
 def train_step(state, batch):
+    # update model state and create logs
     ...
-    logs = ciclo.logs()
-    logs.add_loss("loss": loss)
-    logs.add_metric("accuracy": jnp.mean(jnp.argmax(logits, -1) == labels))
-    return logs, state
-```
-  
-```python
-history = ciclo.history()
-
-for elapsed, batch in ciclo.elapse(dataset):
-    logs = ciclo.logs()
-    # merge log updates
-    logs.updates, state = train_step(state, batch)
-    # commit logs
-    history.commit(elapsed, logs)
-# collect log values (e.g. for plotting)
-steps, loss, accuracy = history.collect("steps", "loss", "accuracy")
-```
-
-
-<details><summary>Complete Example</summary>
-
-```python
-@jax.jit
-def train_step(state: TrainState, batch):
-    ...
-    logs = ciclo.logs()
-    logs.add_metric("loss": loss)
-    logs.add_metric("accuracy": jnp.mean(jnp.argmax(logits, -1) == labels))
     return logs, state
 
 total_steps = 10_000
-call_checkpoint = ciclo.every(steps=1000)
-checkpoint = ciclo.checkpoint(f"logdir/my-model")
-keras_bar = ciclo.keras_bar(total=total_steps)
-end_period = ciclo.at(steps=total_steps)
-history = ciclo.history()
-
-for elapsed, batch in ciclo.elapse(dataset):
-    logs = ciclo.logs()
-    logs.updates, state = train_step(state, batch)
-    
-    if call_checkpoint(elapsed):
-        checkpoint(elapsed, state)
-    
-    keras_bar(elapsed, logs)
-    history.commit(elapsed, logs)
-    if elapsed >= end_period:
-        break
-
-steps, loss, accuracy = history.collect("steps", "loss", "accuracy")
-```
-
-</details><br>
-
----
-
-## Loop language
-  
-```python
-def loop(
-    state: State,
-    dataset: Iterable[Batch],
-    tasks: {Schedule: [Callback]},
-) -> (State, History, Elapsed)
-```
-  
-```python
-
-total_steps = 10_000
+state = create_state() # initial state
 
 state, history, elapsed = ciclo.loop(
-    state,
-    dataset,
+    state, # state: Pytree
+    dataset, # dataset: Iterable[Batch]
     {
+        # Dict[Schedule, List[Callback]]
         ciclo.every(1): [train_step],
-        ciclo.every(steps=1000): [ciclo.checkpoint(f"logdir/my-model")],
+        ciclo.every(steps=1000): [ciclo.checkpoint(f"logdir/model")],
         ciclo.every(1): [ciclo.keras_bar(total=total_steps)],
     },
-    stop=ciclo.at(steps=total_steps)
+    stop=total_steps, # stop: Optional[int | Period]
 )
 ```
 
-<details><summary>Syntactic Sugar</summary>
 
-If you have a single callback for a given schedule you can pass it directly. Furthermore, for `CallbackBase` instances (all callbacks in Ciclo implement this) that need to be run at every iteration, you can avoid having to specify the schedule by using the Mapping expansion `'**'` operator.
 
-| Syntax | Expansion |
-| --- | --- |
-| `schedule: callback` | `schedule: [callback]` |
-| `**callback` | `every(1): [callback]` |
+<details><summary><b>Python Training Loop</b></summary>
 
 ```python
+total_steps = 5_000
+state = create_state() # initial state
 
-  total_steps = 10_000
-  
-  state, history, elapsed = ciclo.loop(
-    state,
-    dataset,
-    {
-      ciclo.every(1): train_step,
-      ciclo.every(steps=1000): ciclo.checkpoint(f"logdir/my-model"),
-      **ciclo.keras_bar(total=total_steps),
-    },
-    stop=ciclo.at(steps=total_steps)
-  )
+call_checkpoint = ciclo.every(steps=1000) # Schedule
+checkpoint = ciclo.checkpoint(f"logdir/model") # Callback
+keras_bar = ciclo.keras_bar(total=total_steps) # Callback
+end_period = ciclo.at(total_steps) # Period
+history = ciclo.history() # History
+# (Elapsed, Batch)
+for elapsed, batch in ciclo.elapse(ds_train.as_numpy_iterator()):
+    logs = ciclo.logs() # Logs
+    # update logs and state
+    logs.updates, state = train_step(state, batch)
+    # periodically checkpoint state
+    if call_checkpoint(elapsed):
+        checkpoint(elapsed, state) # serialize state
+
+    keras_bar(elapsed, logs) # update progress bar
+    history.commit(elapsed, logs) # commit logs to history
+    # stop training when total_steps is reached
+    if elapsed >= end_period:
+        break
 ```
 
 </details><br>
+
 
 ### Loop function callbacks
   
 ```python
-def f(
-    [state, batch, elapsed, loop_state] # accept between 0 and 4 args
+def f( # accepts between 0 and 4 arguments
+    [state, batch, elapsed, loop_state] 
 ) -> (logs | None, state | None) | logs | state | None
 ```
 Where:
