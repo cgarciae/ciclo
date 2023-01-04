@@ -10,8 +10,8 @@ _Training loop utilities and abstractions for JAX_
 ✔️ Training utilities <br>
 ✔️ Loop language <br>
 🧪 [experimental] Managed API (simplified training + parallelism) <br>
-💡 [idea] Predefined Loops (e.g. `fit`) <br>
-💡 [idea] Framework support <br>
+💡 [idea] Framework support (predifined states + steps) <br>
+💡 [idea] Predefined Loops (e.g. `fit`, `evaluate`, `predict`) <br>
 
 <details><summary><b>Why Ciclo?</b></summary>
 
@@ -47,7 +47,7 @@ Ciclo is still in early development, the API is subject to change, expect things
 * Parallelism [experimental]
 
 ## Training loop
-Training loops in `ciclo` are mainly defined using the `loop` function. The `loop` function serves as a mini-language for defining training loops. It is a functional API that allows you to define a training loop as a composition of functions. `loop` takes in a state, a dataset, a dictionary of schedules and callbacks and returns the final state and a history of the logs.
+The `loop` function serves as a mini-language for defining training loops as a composition of functions. `loop` takes in a state, a dataset, a dictionary of tasks schedules and callbacks, then iterates over the dataset and returns the final state, the log history, and a record of the elapsed time.
 
 ```python
 @jax.jit
@@ -71,8 +71,25 @@ state, history, elapsed = ciclo.loop(
     stop=total_steps, # stop: Optional[int | Period]
 )
 ```
+Schedules are callables of the form `f(elapsed) -> bool` that return `True` when the task should be executed. Callbacks on the other hand are either objects that implement the `LoopCallback` protocol or function of the form:
 
+### Loop callback fuctions
 
+```python
+# variadic: accepts between 0 and 4 arguments
+def f(
+    [state, batch, elapsed, loop_state]
+) -> (logs | None, state | None) | logs | state | None
+```
+Where:
+* `loop_state: LoopState` contains all current state of the loop.
+* `logs: Dict[str, Dict[str, Any]]` is a nested dictionary of logs.
+* `state: Pytree` is any valid JAX pytree. 
+
+Callbacks can return a tuple of `(logs, state)` or just `logs` or `state` to update the loop state. If no updates are needed, the callback can return `None`. If `state` is a tuple and logs are not needed, you must return `(None, state)` to avoid ambiguity.
+
+### Training without `loop`
+At its core Ciclo is more of a set of a set training utilities than a framework, so it is possible and encouraged to use utilities like schedules and callback in custom training loops when tighter control is required. For example, the following code is equivalent to the previous example:
 
 <details><summary><b>Python Training Loop</b></summary>
 
@@ -103,18 +120,3 @@ for elapsed, batch in ciclo.elapse(ds_train.as_numpy_iterator()):
 
 </details><br>
 
-
-### Loop function callbacks
-  
-```python
-def f( # accepts between 0 and 4 arguments
-    [state, batch, elapsed, loop_state] 
-) -> (logs | None, state | None) | logs | state | None
-```
-Where:
-
-* state: `Any`, cannot be `tuple` or `dict` for single return value
-* batch: `Any`, current batch
-* elapsed: `Elapsed`, current elapsed steps/samples/time, jit-able
-* loop_state: `LoopState`, contains information about the current loop state, not jit-able
-* logs: `LogsLike = Dict[str, Dict[str, Any]]`
