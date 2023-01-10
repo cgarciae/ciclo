@@ -15,7 +15,7 @@ def every(
     *,
     samples: Union[int, None] = None,
     time: Union[timedelta, float, int, None] = None,
-    steps_offset: int = 0,
+    steps_offset: int = 1,
 ) -> Schedule:
     return Every(
         period=Period.create(steps=steps, samples=samples, time=time),

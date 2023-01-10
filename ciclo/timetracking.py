@@ -16,7 +16,7 @@ class Elapsed(struct.PyTreeNode, Mapping[str, Any]):
         return self.date - self._date_start
 
     @classmethod
-    def create(cls, steps: int = -1, samples: int = 0) -> "Elapsed":
+    def create(cls, steps: int = 0, samples: int = 0) -> "Elapsed":
         now = datetime.now().timestamp()
         return cls(steps=steps, samples=samples, _date_start=now, date=now)
 

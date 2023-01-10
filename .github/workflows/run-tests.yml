@@ -97,7 +97,6 @@ jobs:
       - name: Install Dependencies
         if: steps.cache.outputs.cache-hit != 'true'
         run: |
-          if [ -d ".venv" ]; then rm -rf .venv; fi
           poetry run pip install -U certifi
           poetry install --no-dev
 

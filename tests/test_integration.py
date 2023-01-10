@@ -69,7 +69,7 @@ class TestIntegration:
                 ds_train,
                 {
                     ciclo.every(1): train_step,
-                    ciclo.every(2, steps_offset=1): ciclo.checkpoint(f"{logdir}/model"),
+                    ciclo.every(2): ciclo.checkpoint(f"{logdir}/model"),
                     **ciclo.keras_bar(total=total_steps),
                 },
                 stop=total_steps,
@@ -154,7 +154,7 @@ class TestIntegration:
                 ds_train,
                 {
                     ciclo.every(1): train_step,
-                    ciclo.every(2, steps_offset=1): [
+                    ciclo.every(2): [
                         ciclo.inner_loop(
                             "valid",
                             lambda state: ciclo.loop(
