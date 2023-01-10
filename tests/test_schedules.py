@@ -48,19 +48,14 @@ class TestSchedules:
 
         schedule = ciclo.every(steps=5, steps_offset=3)
 
-        iterator = iter(ciclo.elapse(get_fake_dataset(10, (2, 3))))
+        dataset = ciclo.elapse(get_fake_dataset(10, (2, 3)))
 
-        elapsed, batch = next(iterator)
-        assert not schedule(elapsed)
-
-        elapsed, batch = next(iterator)
-        assert not schedule(elapsed)
-
-        elapsed, batch = next(iterator)
-        assert not schedule(elapsed)
-
-        elapsed, batch = next(iterator)
-        assert schedule(elapsed)
+        for i, (elapsed, batch) in enumerate(dataset):
+            i += 1
+            if i == 3 or i == 8:
+                assert schedule(elapsed)
+            else:
+                assert not schedule(elapsed)
 
     def test_bug(self):
         def train_step():
@@ -92,4 +87,4 @@ class TestSchedules:
         )
 
         steps, acc, acc_valid = history.collect("steps", "acc", "acc_valid")
-        assert steps[0] == 0
+        assert steps[0] == 1
