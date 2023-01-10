@@ -1,3 +1,4 @@
+import functools
 import inspect
 from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, TypeVar
 
@@ -69,6 +70,7 @@ def elapse(
 
 
 def inject(f: Callable[..., A]) -> Callable[..., A]:
+    @functools.wraps(f)
     def _inject(*args) -> A:
         n_args = len(inspect.getfullargspec(f).args)
         if inspect.ismethod(f) or inspect.ismethod(f.__call__):

@@ -181,7 +181,7 @@ def loop(
                     _make_call(loop_state, callback)
 
             loop_state.logs = Logs()
-            for s, (schedule, callbacks) in enumerate(tasks_):
+            for i, (schedule, callbacks) in enumerate(tasks_):
                 if schedule(loop_state.elapsed):
                     for callback in callbacks:
                         _make_call(loop_state, callback)
