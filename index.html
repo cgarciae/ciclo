@@ -219,6 +219,13 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#custom-training-loops" class="md-nav__link">
+    Custom training loops
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -309,6 +316,13 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#custom-training-loops" class="md-nav__link">
+    Custom training loops
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -337,8 +351,8 @@
 <p>✔️ Training utilities <br>
 ✔️ Loop language <br>
 🧪 [experimental] Managed API (simplified training + parallelism) <br>
-💡 [idea] Predefined Loops (e.g. <code>fit</code>) <br>
-💡 [idea] Framework support <br></p>
+💡 [idea] Framework support (predifined states + steps) <br>
+💡 [idea] Predefined Loops (e.g. <code>fit</code>, <code>evaluate</code>, <code>predict</code>) <br></p>
 <details><summary><b>Why Ciclo?</b></summary>
 
 
@@ -369,7 +383,7 @@
 <li>Parallelism [experimental]</li>
 </ul>
 <h2 id="training-loop">Training loop</h2>
-<p>Training loops in <code>ciclo</code> are mainly defined using the <code>loop</code> function. The <code>loop</code> function serves as a mini-language for defining training loops. It is a functional API that allows you to define a training loop as a composition of functions. <code>loop</code> takes in a state, a dataset, a dictionary of schedules and callbacks and returns the final state and a history of the logs.</p>
+<p>The <code>loop</code> function serves as a mini-language for defining training loops as a composition of functions. The tasks dictionary lets you express the desired behavior of the loop as a composition of schedules and callbacks.</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@jax</span><span class="o">.</span><span class="n">jit</span>
 <span class="k">def</span> <span class="nf">train_step</span><span class="p">(</span><span class="n">state</span><span class="p">,</span> <span class="n">batch</span><span class="p">):</span>
     <span class="c1"># update model state and create logs</span>
@@ -391,7 +405,19 @@
     <span class="n">stop</span><span class="o">=</span><span class="n">total_steps</span><span class="p">,</span> <span class="c1"># stop: Optional[int | Period]</span>
 <span class="p">)</span>
 </code></pre></div>
-<details><summary><b>Python Training Loop</b></summary>
+<h3 id="loop-function-callbacks">Loop function callbacks</h3>
+<p>Callbacks are either objects that implement the <code>LoopCallback</code> protocol or functions of the form:</p>
+<p><div class="highlight"><pre><span></span><code><span class="c1"># variadic: accepts between 0 and 4 arguments</span>
+<span class="k">def</span> <span class="nf">f</span><span class="p">(</span>
+    <span class="p">[</span><span class="n">state</span><span class="p">,</span> <span class="n">batch</span><span class="p">,</span> <span class="n">elapsed</span><span class="p">,</span> <span class="n">loop_state</span><span class="p">]</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="p">(</span><span class="n">logs</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="n">state</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">|</span> <span class="n">logs</span> <span class="o">|</span> <span class="n">state</span> <span class="o">|</span> <span class="kc">None</span>
+</code></pre></div>
+You can safely <code>jit</code> all functions of this form except for the ones that accept the <code>loop_state</code> argument since it is a mutable object.</p>
+<h3 id="custom-training-loops">Custom training loops</h3>
+<p>You can use Ciclo's utilities to build your own training loop when you need more control. </p>
+<details><summary><b>Show</b></summary>
+
+For example, the previous loop can be written as:
 
 <div class="highlight"><pre><span></span><code><span class="n">total_steps</span> <span class="o">=</span> <span class="mi">5_000</span>
 <span class="n">state</span> <span class="o">=</span> <span class="n">create_state</span><span class="p">()</span> <span class="c1"># initial state</span>
@@ -419,19 +445,6 @@
 
 </details>
 <p><br></p>
-<h3 id="loop-function-callbacks">Loop function callbacks</h3>
-<p><div class="highlight"><pre><span></span><code><span class="k">def</span> <span class="nf">f</span><span class="p">(</span> <span class="c1"># accepts between 0 and 4 arguments</span>
-    <span class="p">[</span><span class="n">state</span><span class="p">,</span> <span class="n">batch</span><span class="p">,</span> <span class="n">elapsed</span><span class="p">,</span> <span class="n">loop_state</span><span class="p">]</span> 
-<span class="p">)</span> <span class="o">-&gt;</span> <span class="p">(</span><span class="n">logs</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="n">state</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">|</span> <span class="n">logs</span> <span class="o">|</span> <span class="n">state</span> <span class="o">|</span> <span class="kc">None</span>
-</code></pre></div>
-Where:</p>
-<ul>
-<li>state: <code>Any</code>, cannot be <code>tuple</code> or <code>dict</code> for single return value</li>
-<li>batch: <code>Any</code>, current batch</li>
-<li>elapsed: <code>Elapsed</code>, current elapsed steps/samples/time, jit-able</li>
-<li>loop_state: <code>LoopState</code>, contains information about the current loop state, not jit-able</li>
-<li>logs: <code>LogsLike = Dict[str, Dict[str, Any]]</code></li>
-</ul>
 
 
 
