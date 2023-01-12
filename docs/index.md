@@ -10,8 +10,8 @@ _Training loop utilities and abstractions for JAX_
 ✔️ Training utilities <br>
 ✔️ Loop language <br>
 🧪 [experimental] Managed API (simplified training + parallelism) <br>
-💡 [idea] Predefined Loops (e.g. `fit`) <br>
-💡 [idea] Framework support <br>
+💡 [idea] Framework support (predifined states + steps) <br>
+💡 [idea] Predefined Loops (e.g. `fit`, `evaluate`, `predict`) <br>
 
 <details><summary><b>Why Ciclo?</b></summary>
 
@@ -47,7 +47,7 @@ Ciclo is still in early development, the API is subject to change, expect things
 * Parallelism [experimental]
 
 ## Training loop
-Training loops in `ciclo` are mainly defined using the `loop` function. The `loop` function serves as a mini-language for defining training loops. It is a functional API that allows you to define a training loop as a composition of functions. `loop` takes in a state, a dataset, a dictionary of schedules and callbacks and returns the final state and a history of the logs.
+The `loop` function serves as a mini-language for defining training loops as a composition of functions. The tasks dictionary lets you express the desired behavior of the loop as a composition of schedules and callbacks.
 
 ```python
 @jax.jit
@@ -71,10 +71,24 @@ state, history, elapsed = ciclo.loop(
     stop=total_steps, # stop: Optional[int | Period]
 )
 ```
+### Loop function callbacks
 
+Callbacks are either objects that implement the `LoopCallback` protocol or functions of the form:
 
+```python
+# variadic: accepts between 0 and 4 arguments
+def f(
+    [state, batch, elapsed, loop_state]
+) -> (logs | None, state | None) | logs | state | None
+```
+You can safely `jit` all functions of this form except for the ones that accept the `loop_state` argument since it is a mutable object.
 
-<details><summary><b>Python Training Loop</b></summary>
+### Custom training loops
+You can use Ciclo's utilities to build your own training loop when you need more control. 
+
+<details><summary><b>Show</b></summary>
+
+For example, the previous loop can be written as:
 
 ```python
 total_steps = 5_000
@@ -103,18 +117,3 @@ for elapsed, batch in ciclo.elapse(ds_train.as_numpy_iterator()):
 
 </details><br>
 
-
-### Loop function callbacks
-  
-```python
-def f( # accepts between 0 and 4 arguments
-    [state, batch, elapsed, loop_state] 
-) -> (logs | None, state | None) | logs | state | None
-```
-Where:
-
-* state: `Any`, cannot be `tuple` or `dict` for single return value
-* batch: `Any`, current batch
-* elapsed: `Elapsed`, current elapsed steps/samples/time, jit-able
-* loop_state: `LoopState`, contains information about the current loop state, not jit-able
-* logs: `LogsLike = Dict[str, Dict[str, Any]]`

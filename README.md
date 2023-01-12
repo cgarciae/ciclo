@@ -47,7 +47,7 @@ Ciclo is still in early development, the API is subject to change, expect things
 * Parallelism [experimental]
 
 ## Training loop
-The `loop` function serves as a mini-language for defining training loops as a composition of functions. `loop` takes in a state, a dataset, a dictionary of tasks schedules and callbacks, then iterates over the dataset and returns the final state, the log history, and a record of the elapsed time.
+The `loop` function serves as a mini-language for defining training loops as a composition of functions. The tasks dictionary lets you express the desired behavior of the loop as a composition of schedules and callbacks.
 
 ```python
 @jax.jit
@@ -71,9 +71,9 @@ state, history, elapsed = ciclo.loop(
     stop=total_steps, # stop: Optional[int | Period]
 )
 ```
-Schedules are callables of the form `f(elapsed) -> bool` that return `True` when the task should be executed. Callbacks on the other hand are either objects that implement the `LoopCallback` protocol or function of the form:
+### Loop function callbacks
 
-### Loop callback fuctions
+Callbacks are either objects that implement the `LoopCallback` protocol or functions of the form:
 
 ```python
 # variadic: accepts between 0 and 4 arguments
@@ -81,17 +81,14 @@ def f(
     [state, batch, elapsed, loop_state]
 ) -> (logs | None, state | None) | logs | state | None
 ```
-Where:
-* `loop_state: LoopState` contains all current state of the loop.
-* `logs: Dict[str, Dict[str, Any]]` is a nested dictionary of logs.
-* `state: Pytree` is any valid JAX pytree. 
+You can safely `jit` all functions of this form except for the ones that accept the `loop_state` argument since it is a mutable object.
 
-Callbacks can return a tuple of `(logs, state)` or just `logs` or `state` to update the loop state. If no updates are needed, the callback can return `None`. If `state` is a tuple and logs are not needed, you must return `(None, state)` to avoid ambiguity.
+### Custom training loops
+You can use Ciclo's utilities to build your own training loop when you need more control. 
 
-### Training without `loop`
-At its core Ciclo is more of a set of a set training utilities than a framework, so it is possible and encouraged to use utilities like schedules and callback in custom training loops when tighter control is required. For example, the following code is equivalent to the previous example:
+<details><summary><b>Show</b></summary>
 
-<details><summary><b>Python Training Loop</b></summary>
+For example, the previous loop can be written as:
 
 ```python
 total_steps = 5_000
