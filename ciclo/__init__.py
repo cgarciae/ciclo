@@ -15,7 +15,7 @@ from .callbacks import (
 )
 from .logging import History, Logs
 from .loops import LoopCallbackBase, LoopElement, LoopState, loop
-from .schedules import every, piecewise
+from .schedules import always, every, never, piecewise
 from .strategies import (
     JIT,
     DataParallel,
@@ -24,5 +24,5 @@ from .strategies import (
     get_strategy,
     register_strategy,
 )
-from .timetracking import Elapsed, Period
-from .utils import at, callback, elapse, history, inject, logs
+from .timetracking import Elapsed, Period, elapse
+from .utils import at, callback, history, inject, logs

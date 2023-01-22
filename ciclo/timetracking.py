@@ -1,8 +1,10 @@
 import dataclasses
 from datetime import datetime, timedelta
-from typing import Any, Callable, Iterable, Mapping, Union
+from typing import Any, Callable, Iterable, Mapping, Optional, Tuple, Union
 
 from flax import struct
+
+from ciclo.types import B
 
 
 class Elapsed(struct.PyTreeNode, Mapping[str, Any]):
@@ -117,4 +119,30 @@ class Period:
         return f"Period({params_repr})"
 
 
-__all__ = ["Elapsed", "Period"]
+PeriodLike = Union[Period, int]
+
+
+def to_period(period: PeriodLike) -> Period:
+    if isinstance(period, int):
+        period = Period.create(steps=period)
+    return period
+
+
+def elapse(
+    dataset: Iterable[B],
+    initial: Optional[Elapsed] = None,
+    stop: Optional[PeriodLike] = None,
+) -> Iterable[Tuple[Elapsed, B]]:
+    from ciclo.utils import get_batch_size
+
+    if stop is not None:
+        stop = to_period(stop)
+
+    elapsed = initial or Elapsed.create()
+    for batch in dataset:
+        yield elapsed, batch
+        batch_size = get_batch_size(batch)
+        elapsed = elapsed.update(batch_size)
+
+        if stop and elapsed >= stop:
+            break

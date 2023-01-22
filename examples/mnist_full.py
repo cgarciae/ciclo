@@ -104,7 +104,7 @@ state, history, _ = ciclo.loop(
     state,
     ds_train.as_numpy_iterator(),
     {
-        ciclo.every(1): train_step,
+        ciclo.always: train_step,
         ciclo.every(log_steps): [compute_metrics, reset_metrics],
         ciclo.every(eval_steps): [
             ciclo.inner_loop(
@@ -117,7 +117,9 @@ state, history, _ = ciclo.loop(
                 ),
             ),
             ciclo.checkpoint(
-                f"logdir/mnist_full/{int(time())}", monitor="accuracy_valid", mode="max"
+                f"logdir/mnist_full/{int(time())}",
+                monitor="accuracy_valid",
+                mode="max",
             ),
             ciclo.early_stopping(
                 monitor="accuracy_valid",

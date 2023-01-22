@@ -80,7 +80,7 @@ class TestIntegration:
             assert Path(f"{logdir}/model").exists()
             assert len(history) == total_steps
             assert len(loss) == len(accuracy) == total_steps
-            assert steps == [1, 2, 3]
+            assert steps == [0, 1, 2]
 
     def test_loop_with_validation(self):
         batch_size = 3
@@ -186,4 +186,4 @@ class TestIntegration:
             assert Path(f"{logdir}/model").exists()
             assert len(history) == total_steps
             assert len(loss) == len(accuracy) == total_steps
-            assert steps == list(range(1, total_steps + 1))
+            assert steps == list(range(total_steps))

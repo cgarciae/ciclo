@@ -4,6 +4,44 @@ import ciclo
 
 
 class TestLoops:
+    def test_basic_loop(self):
+        def increment(state, key):
+            state[key] += 1
+            return None, state
+
+        state = {"a": 0, "b": 0}
+
+        state, history, elapsed = ciclo.loop(
+            state,
+            ciclo.elapse(range(10)),
+            {
+                ciclo.every(1): lambda state: increment(state, "a"),
+                ciclo.every(2): lambda state: increment(state, "b"),
+            },
+        )
+
+        assert state["a"] == 10
+        assert state["b"] == 5
+
+    def test_integer_schedules(self):
+        def increment(state, key):
+            state[key] += 1
+            return None, state
+
+        state = {"a": 0, "b": 0}
+
+        state, history, elapsed = ciclo.loop(
+            state,
+            ciclo.elapse(range(10)),
+            {
+                1: lambda state: increment(state, "a"),
+                2: lambda state: increment(state, "b"),
+            },
+        )
+
+        assert state["a"] == 10
+        assert state["b"] == 5
+
     def test_bug(self):
 
         state = None

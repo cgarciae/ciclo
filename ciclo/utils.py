@@ -3,6 +3,7 @@ import inspect
 from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, TypeVar
 
 import jax
+import numpy as np
 
 from ciclo.logging import Elapsed, History, Logs
 from ciclo.loops import LoopFunctionCallback
@@ -50,23 +51,17 @@ def callback(f) -> LoopFunctionCallback:
 
 def get_batch_size(batch: Batch) -> int:
     def get_size(sizes, x):
-        sizes.add(x.shape[0])
+        shape = np.shape(x)
+        if len(shape) == 0:
+            sizes.add(1)
+        else:
+            sizes.add(shape[0])
         return sizes
 
     sizes = jax.tree_util.tree_reduce(get_size, batch, set())
     if len(sizes) != 1:
         raise ValueError("Batch size must be the same for all elements in the batch.")
     return sizes.pop()
-
-
-def elapse(
-    dataset: Iterable[B], initial: Optional[Elapsed] = None
-) -> Iterable[Tuple[Elapsed, B]]:
-    elapsed = initial or Elapsed.create()
-    for batch in dataset:
-        batch_size = get_batch_size(batch)
-        elapsed = elapsed.update(batch_size)
-        yield elapsed, batch
 
 
 def inject(f: Callable[..., A]) -> Callable[..., A]:

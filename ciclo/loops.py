@@ -18,36 +18,11 @@ from typing_extensions import Protocol, runtime_checkable
 
 import ciclo
 from ciclo.logging import History, Logs
-from ciclo.timetracking import Elapsed, Period
-from ciclo.types import (
-    A,
-    B,
-    Batch,
-    Broadcasts,
-    InputCallback,
-    LogsLike,
-    S,
-    Schedule,
-    Statics,
-)
+from ciclo.schedules import ScheduleLike, to_schedule
+from ciclo.timetracking import Elapsed, Period, PeriodLike, elapse, to_period
+from ciclo.types import A, B, Batch, Broadcasts, LogsLike, S, Schedule, Statics
 
 CallbackOutput = Tuple[LogsLike, S]
-
-
-@runtime_checkable
-class LoopCallback(Protocol, Generic[S]):
-    def __loop_callback__(self, loop_state: "LoopState[S]") -> CallbackOutput[S]:
-        ...
-
-
-InputTasks = Dict[Schedule, Union[InputCallback, List[InputCallback]]]
-ScheduleCallback = Dict[Schedule, List[LoopCallback[S]]]
-CallbackAdapter = Callable[[Any], LoopCallback[S]]
-
-FunctionCallbackOutputs = Union[
-    Tuple[Optional[LogsLike], Optional[S]], LogsLike, S, None
-]
-GeneralCallback = Callable[[S, Batch, Broadcasts, Statics], FunctionCallbackOutputs[S]]
 
 
 @dataclass
@@ -62,6 +37,34 @@ class LoopState(Generic[S]):
     stop_iteration: bool = False
 
 
+@runtime_checkable
+class LoopCallback(Protocol, Generic[S]):
+    def __loop_callback__(self, loop_state: "LoopState[S]") -> CallbackOutput[S]:
+        ...
+
+
+class LoopElement:
+    def keys(self) -> List[Schedule]:
+        return [ciclo.every(1)]
+
+    def __getitem__(self: A, key: Schedule) -> List[A]:
+        return [self]
+
+
+class LoopCallbackBase(LoopCallback[S], LoopElement):
+    @abstractmethod
+    def __loop_callback__(self, loop_state: LoopState[S]) -> CallbackOutput[S]:
+        ...
+
+
+LoopCallbackLike = Any
+InputTasks = Dict[ScheduleLike, Union[LoopCallbackLike, List[LoopCallbackLike]]]
+ScheduleCallback = Dict[Schedule, List[LoopCallback[S]]]
+CallbackAdapter = Callable[[Any], LoopCallback[S]]
+FunctionCallbackOutputs = Union[
+    Tuple[Optional[LogsLike], Optional[S]], LogsLike, S, None
+]
+GeneralCallback = Callable[[S, Batch, Broadcasts, Statics], FunctionCallbackOutputs[S]]
 LoopOutput = Tuple[S, History, Elapsed]
 
 
@@ -91,20 +94,6 @@ def to_standard_outputs(
     return logs, state
 
 
-class LoopElement:
-    def keys(self) -> List[Schedule]:
-        return [ciclo.every(1)]
-
-    def __getitem__(self: A, key: Schedule) -> List[A]:
-        return [self]
-
-
-class LoopCallbackBase(LoopCallback[S], LoopElement):
-    @abstractmethod
-    def __loop_callback__(self, loop_state: LoopState[S]) -> CallbackOutput[S]:
-        ...
-
-
 @dataclass(frozen=True)
 class LoopFunctionCallback(LoopCallbackBase[S]):
     f: Callable[..., FunctionCallbackOutputs[S]]
@@ -121,18 +110,14 @@ def loop(
     dataset: Iterable[B],
     tasks: InputTasks,
     *,
-    stop: Union[Period, int, None] = None,
-    on_start: Union[InputCallback, List[InputCallback], None] = None,
-    on_end: Union[InputCallback, List[InputCallback], None] = None,
+    stop: Optional[PeriodLike] = None,
+    on_start: Union[LoopCallbackLike, List[LoopCallbackLike], None] = None,
+    on_end: Union[LoopCallbackLike, List[LoopCallbackLike], None] = None,
     history: Optional[History] = None,
     elapsed: Optional[Elapsed] = None,
     catch_keyboard_interrupt: bool = True,
     metadata: Optional[Any] = None,
 ) -> LoopOutput[S]:
-    if isinstance(stop, int):
-        stop_period = Period.create(steps=stop)
-    else:
-        stop_period = stop
 
     if history is None:
         history = History()
@@ -157,9 +142,9 @@ def loop(
     elif not isinstance(on_end, list):
         on_end = [on_end]
 
-    tasks_ = [
+    schedule_callbacks = [
         (
-            schedule,
+            to_schedule(schedule),
             [
                 get_loop_callback(f)
                 for f in (callbacks if isinstance(callbacks, list) else [callbacks])
@@ -169,7 +154,9 @@ def loop(
     ]
 
     try:
-        for i, (elapsed, batch) in enumerate(ciclo.elapse(dataset, initial=elapsed)):
+        for i, (elapsed, batch) in enumerate(
+            elapse(dataset, initial=elapsed, stop=stop)
+        ):
             loop_state.elapsed = elapsed
             loop_state.batch = batch
 
@@ -181,7 +168,7 @@ def loop(
                     _make_call(loop_state, callback)
 
             loop_state.logs = Logs()
-            for i, (schedule, callbacks) in enumerate(tasks_):
+            for i, (schedule, callbacks) in enumerate(schedule_callbacks):
                 if schedule(loop_state.elapsed):
                     for callback in callbacks:
                         _make_call(loop_state, callback)
@@ -193,9 +180,7 @@ def loop(
             if loop_state.logs:
                 loop_state.history.commit(elapsed, loop_state.logs)
 
-            if loop_state.stop_iteration or (
-                stop_period and loop_state.elapsed >= stop_period
-            ):
+            if loop_state.stop_iteration:
                 break
 
         # call on_end on last batch
