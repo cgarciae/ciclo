@@ -46,14 +46,13 @@ Ciclo is still in early development, the API is subject to change, expect things
 * Loops
 * Parallelism [experimental]
 
-## Training loop
+## Quick Start
 The `loop` function serves as a mini-language for defining training loops as a composition of functions. The tasks dictionary lets you express the desired behavior of the loop as a composition of schedules and callbacks.
 
 ```python
 @jax.jit
 def train_step(state, batch):
-    # update model state and create logs
-    ...
+    ... # update model state and create logs
     return logs, state
 
 total_steps = 10_000
@@ -71,24 +70,8 @@ state, history, elapsed = ciclo.loop(
     stop=total_steps, # stop: Optional[int | Period]
 )
 ```
-### Loop function callbacks
 
-Callbacks are either objects that implement the `LoopCallback` protocol or functions of the form:
-
-```python
-# variadic: accepts between 0 and 4 arguments
-def f(
-    [state, batch, elapsed, loop_state]
-) -> (logs | None, state | None) | logs | state | None
-```
-You can safely `jit` all functions of this form except for the ones that accept the `loop_state` argument since it is a mutable object.
-
-### Custom training loops
-You can use Ciclo's utilities to build your own training loop when you need more control. 
-
-<details><summary><b>Show</b></summary>
-
-For example, the previous loop can be written as:
+You can also use Ciclo's utilities to build your own training loop when you need more control. 
 
 ```python
 total_steps = 5_000
@@ -97,10 +80,9 @@ state = create_state() # initial state
 call_checkpoint = ciclo.every(steps=1000) # Schedule
 checkpoint = ciclo.checkpoint(f"logdir/model") # Callback
 keras_bar = ciclo.keras_bar(total=total_steps) # Callback
-end_period = ciclo.at(total_steps) # Period
 history = ciclo.history() # History
 # (Elapsed, Batch)
-for elapsed, batch in ciclo.elapse(ds_train.as_numpy_iterator()):
+for elapsed, batch in ciclo.elapse(ds_train.as_numpy_iterator(), stop=total_steps):
     logs = ciclo.logs() # Logs
     # update logs and state
     logs.updates, state = train_step(state, batch)
@@ -110,10 +92,4 @@ for elapsed, batch in ciclo.elapse(ds_train.as_numpy_iterator()):
 
     keras_bar(elapsed, logs) # update progress bar
     history.commit(elapsed, logs) # commit logs to history
-    # stop training when total_steps is reached
-    if elapsed >= end_period:
-        break
 ```
-
-</details><br>
-
