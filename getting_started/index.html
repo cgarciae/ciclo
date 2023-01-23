@@ -426,7 +426,7 @@
 <p>In this guide we will learn how to use <code>ciclo</code> to train a simple model on the MNIST dataset.</p>
 <h3 id="installation-and-usage">Installation and usage</h3>
 <p>You can install <code>ciclo</code> from pypi:
-<div class="highlight"><pre><span></span><code>pip install ciclo
+<div class="highlight"><pre><span></span><code>pip<span class="w"> </span>install<span class="w"> </span>ciclo
 </code></pre></div></p>
 <p>To use <code>ciclo</code> you tipically the main module as it exposes most of the API:</p>
 <div class="highlight"><pre><span></span><code><span class="kn">import</span> <span class="nn">ciclo</span>
@@ -529,7 +529,7 @@ If you are using other frameworks like Haiku or Equinox, feel free to leverage <
 <span class="n">end_period</span> <span class="o">=</span> <span class="n">ciclo</span><span class="o">.</span><span class="n">at</span><span class="p">(</span><span class="n">total_steps</span><span class="p">)</span> <span class="c1"># Period</span>
 <span class="n">history</span> <span class="o">=</span> <span class="n">ciclo</span><span class="o">.</span><span class="n">history</span><span class="p">()</span> <span class="c1"># History</span>
 <span class="c1"># (Elapsed, Batch)</span>
-<span class="k">for</span> <span class="n">elapsed</span><span class="p">,</span> <span class="n">batch</span> <span class="ow">in</span> <span class="n">ciclo</span><span class="o">.</span><span class="n">elapse</span><span class="p">(</span><span class="n">ds_train</span><span class="o">.</span><span class="n">as_numpy_iterator</span><span class="p">()):</span>
+<span class="k">for</span> <span class="n">elapsed</span><span class="p">,</span> <span class="n">batch</span> <span class="ow">in</span> <span class="n">ciclo</span><span class="o">.</span><span class="n">elapse</span><span class="p">(</span><span class="n">ds_train</span><span class="o">.</span><span class="n">as_numpy_iterator</span><span class="p">(),</span> <span class="n">stop</span><span class="o">=</span><span class="n">end_period</span><span class="p">):</span>
     <span class="n">logs</span> <span class="o">=</span> <span class="n">ciclo</span><span class="o">.</span><span class="n">logs</span><span class="p">()</span> <span class="c1"># Logs</span>
     <span class="c1"># update logs and state</span>
     <span class="n">logs</span><span class="o">.</span><span class="n">updates</span><span class="p">,</span> <span class="n">state</span> <span class="o">=</span> <span class="n">train_step</span><span class="p">(</span><span class="n">state</span><span class="p">,</span> <span class="n">batch</span><span class="p">)</span>
@@ -539,9 +539,6 @@ If you are using other frameworks like Haiku or Equinox, feel free to leverage <
 
     <span class="n">keras_bar</span><span class="p">(</span><span class="n">elapsed</span><span class="p">,</span> <span class="n">logs</span><span class="p">)</span> <span class="c1"># update progress bar</span>
     <span class="n">history</span><span class="o">.</span><span class="n">commit</span><span class="p">(</span><span class="n">elapsed</span><span class="p">,</span> <span class="n">logs</span><span class="p">)</span> <span class="c1"># commit logs to history</span>
-    <span class="c1"># stop training when total_steps is reached</span>
-    <span class="k">if</span> <span class="n">elapsed</span> <span class="o">&gt;=</span> <span class="n">end_period</span><span class="p">:</span>
-        <span class="k">break</span>
 </code></pre></div>
 <p>Here we are showing a somewhat equivalent version to what <code>loop</code> produces, however it could be simplified a bit.</p>
 </div>

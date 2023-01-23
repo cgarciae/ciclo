@@ -205,29 +205,9 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#training-loop" class="md-nav__link">
-    Training loop
+  <a href="#quick-start" class="md-nav__link">
+    Quick Start
   </a>
-  
-    <nav class="md-nav" aria-label="Training loop">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#loop-function-callbacks" class="md-nav__link">
-    Loop function callbacks
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#custom-training-loops" class="md-nav__link">
-    Custom training loops
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
@@ -302,29 +282,9 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#training-loop" class="md-nav__link">
-    Training loop
+  <a href="#quick-start" class="md-nav__link">
+    Quick Start
   </a>
-  
-    <nav class="md-nav" aria-label="Training loop">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#loop-function-callbacks" class="md-nav__link">
-    Loop function callbacks
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#custom-training-loops" class="md-nav__link">
-    Custom training loops
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
@@ -369,7 +329,7 @@
 </details>
 
 <h2 id="installation">Installation</h2>
-<div class="highlight"><pre><span></span><code>pip install ciclo
+<div class="highlight"><pre><span></span><code>pip<span class="w"> </span>install<span class="w"> </span>ciclo
 </code></pre></div>
 <h2 id="status">Status</h2>
 <p>Ciclo is still in early development, the API is subject to change, expect things to break. If you are interested in contributing, please reach out.</p>
@@ -382,12 +342,11 @@
 <li>Loops</li>
 <li>Parallelism [experimental]</li>
 </ul>
-<h2 id="training-loop">Training loop</h2>
+<h2 id="quick-start">Quick Start</h2>
 <p>The <code>loop</code> function serves as a mini-language for defining training loops as a composition of functions. The tasks dictionary lets you express the desired behavior of the loop as a composition of schedules and callbacks.</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@jax</span><span class="o">.</span><span class="n">jit</span>
 <span class="k">def</span> <span class="nf">train_step</span><span class="p">(</span><span class="n">state</span><span class="p">,</span> <span class="n">batch</span><span class="p">):</span>
-    <span class="c1"># update model state and create logs</span>
-    <span class="o">...</span>
+    <span class="o">...</span> <span class="c1"># update model state and create logs</span>
     <span class="k">return</span> <span class="n">logs</span><span class="p">,</span> <span class="n">state</span>
 
 <span class="n">total_steps</span> <span class="o">=</span> <span class="mi">10_000</span>
@@ -405,30 +364,16 @@
     <span class="n">stop</span><span class="o">=</span><span class="n">total_steps</span><span class="p">,</span> <span class="c1"># stop: Optional[int | Period]</span>
 <span class="p">)</span>
 </code></pre></div>
-<h3 id="loop-function-callbacks">Loop function callbacks</h3>
-<p>Callbacks are either objects that implement the <code>LoopCallback</code> protocol or functions of the form:</p>
-<p><div class="highlight"><pre><span></span><code><span class="c1"># variadic: accepts between 0 and 4 arguments</span>
-<span class="k">def</span> <span class="nf">f</span><span class="p">(</span>
-    <span class="p">[</span><span class="n">state</span><span class="p">,</span> <span class="n">batch</span><span class="p">,</span> <span class="n">elapsed</span><span class="p">,</span> <span class="n">loop_state</span><span class="p">]</span>
-<span class="p">)</span> <span class="o">-&gt;</span> <span class="p">(</span><span class="n">logs</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="n">state</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">|</span> <span class="n">logs</span> <span class="o">|</span> <span class="n">state</span> <span class="o">|</span> <span class="kc">None</span>
-</code></pre></div>
-You can safely <code>jit</code> all functions of this form except for the ones that accept the <code>loop_state</code> argument since it is a mutable object.</p>
-<h3 id="custom-training-loops">Custom training loops</h3>
-<p>You can use Ciclo's utilities to build your own training loop when you need more control. </p>
-<details><summary><b>Show</b></summary>
-
-For example, the previous loop can be written as:
-
+<p>You can also use Ciclo's utilities to build your own training loop when you need more control. </p>
 <div class="highlight"><pre><span></span><code><span class="n">total_steps</span> <span class="o">=</span> <span class="mi">5_000</span>
 <span class="n">state</span> <span class="o">=</span> <span class="n">create_state</span><span class="p">()</span> <span class="c1"># initial state</span>
 
 <span class="n">call_checkpoint</span> <span class="o">=</span> <span class="n">ciclo</span><span class="o">.</span><span class="n">every</span><span class="p">(</span><span class="n">steps</span><span class="o">=</span><span class="mi">1000</span><span class="p">)</span> <span class="c1"># Schedule</span>
 <span class="n">checkpoint</span> <span class="o">=</span> <span class="n">ciclo</span><span class="o">.</span><span class="n">checkpoint</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;logdir/model&quot;</span><span class="p">)</span> <span class="c1"># Callback</span>
 <span class="n">keras_bar</span> <span class="o">=</span> <span class="n">ciclo</span><span class="o">.</span><span class="n">keras_bar</span><span class="p">(</span><span class="n">total</span><span class="o">=</span><span class="n">total_steps</span><span class="p">)</span> <span class="c1"># Callback</span>
-<span class="n">end_period</span> <span class="o">=</span> <span class="n">ciclo</span><span class="o">.</span><span class="n">at</span><span class="p">(</span><span class="n">total_steps</span><span class="p">)</span> <span class="c1"># Period</span>
 <span class="n">history</span> <span class="o">=</span> <span class="n">ciclo</span><span class="o">.</span><span class="n">history</span><span class="p">()</span> <span class="c1"># History</span>
 <span class="c1"># (Elapsed, Batch)</span>
-<span class="k">for</span> <span class="n">elapsed</span><span class="p">,</span> <span class="n">batch</span> <span class="ow">in</span> <span class="n">ciclo</span><span class="o">.</span><span class="n">elapse</span><span class="p">(</span><span class="n">ds_train</span><span class="o">.</span><span class="n">as_numpy_iterator</span><span class="p">()):</span>
+<span class="k">for</span> <span class="n">elapsed</span><span class="p">,</span> <span class="n">batch</span> <span class="ow">in</span> <span class="n">ciclo</span><span class="o">.</span><span class="n">elapse</span><span class="p">(</span><span class="n">ds_train</span><span class="o">.</span><span class="n">as_numpy_iterator</span><span class="p">(),</span> <span class="n">stop</span><span class="o">=</span><span class="n">total_steps</span><span class="p">):</span>
     <span class="n">logs</span> <span class="o">=</span> <span class="n">ciclo</span><span class="o">.</span><span class="n">logs</span><span class="p">()</span> <span class="c1"># Logs</span>
     <span class="c1"># update logs and state</span>
     <span class="n">logs</span><span class="o">.</span><span class="n">updates</span><span class="p">,</span> <span class="n">state</span> <span class="o">=</span> <span class="n">train_step</span><span class="p">(</span><span class="n">state</span><span class="p">,</span> <span class="n">batch</span><span class="p">)</span>
@@ -438,13 +383,7 @@ For example, the previous loop can be written as:
 
     <span class="n">keras_bar</span><span class="p">(</span><span class="n">elapsed</span><span class="p">,</span> <span class="n">logs</span><span class="p">)</span> <span class="c1"># update progress bar</span>
     <span class="n">history</span><span class="o">.</span><span class="n">commit</span><span class="p">(</span><span class="n">elapsed</span><span class="p">,</span> <span class="n">logs</span><span class="p">)</span> <span class="c1"># commit logs to history</span>
-    <span class="c1"># stop training when total_steps is reached</span>
-    <span class="k">if</span> <span class="n">elapsed</span> <span class="o">&gt;=</span> <span class="n">end_period</span><span class="p">:</span>
-        <span class="k">break</span>
 </code></pre></div>
-
-</details>
-<p><br></p>
 
 
 
