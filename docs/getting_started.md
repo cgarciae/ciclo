@@ -145,7 +145,7 @@ To define training loops Ciclo provides utilities like schedules, callbacks, log
     end_period = ciclo.at(total_steps) # Period
     history = ciclo.history() # History
     # (Elapsed, Batch)
-    for elapsed, batch in ciclo.elapse(ds_train.as_numpy_iterator()):
+    for elapsed, batch in ciclo.elapse(ds_train.as_numpy_iterator(), stop=end_period):
         logs = ciclo.logs() # Logs
         # update logs and state
         logs.updates, state = train_step(state, batch)
@@ -155,9 +155,6 @@ To define training loops Ciclo provides utilities like schedules, callbacks, log
 
         keras_bar(elapsed, logs) # update progress bar
         history.commit(elapsed, logs) # commit logs to history
-        # stop training when total_steps is reached
-        if elapsed >= end_period:
-            break
     ```
 
     Here we are showing a somewhat equivalent version to what `loop` produces, however it could be simplified a bit.
