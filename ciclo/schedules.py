@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Tuple, Union
 from ciclo.timetracking import Elapsed, Period
 from ciclo.types import Schedule
 
-ScheduleLike = Union[Schedule, int, bool]
+ScheduleLike = Schedule
 
 # ---------------------------------------
 # base
@@ -186,10 +186,10 @@ def to_schedule(value: Any) -> Schedule:
         return value
     elif callable(value):
         return Lambda.create(value)
-    elif isinstance(value, bool):
-        return Constant.create(value)
-    elif isinstance(value, int):
-        return every(steps=value)
+    # elif isinstance(value, bool):
+    #     return Constant.create(value)
+    # elif isinstance(value, int):
+    #     return every(steps=value)
     else:
         raise ValueError(
             f"Invalid schedule, must be a Schedule, callable, bool or int, got: {value}"

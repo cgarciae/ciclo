@@ -8,7 +8,7 @@ from einop import einop
 from flax import jax_utils
 from typing_extensions import Protocol, runtime_checkable
 
-from ciclo.loops import GeneralCallback
+from ciclo.loops.loop import GeneralCallback
 from ciclo.types import CluMetric
 
 

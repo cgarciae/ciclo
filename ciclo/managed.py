@@ -16,7 +16,7 @@ from flax import struct
 from flax.training import train_state
 from typing_extensions import Protocol, runtime_checkable
 
-from ciclo.loops import (
+from ciclo.loops.loop import (
     CallbackOutput,
     FunctionCallbackOutputs,
     LoopCallbackBase,

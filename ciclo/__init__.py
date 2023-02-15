@@ -14,7 +14,8 @@ from .callbacks import (
     wandb_logger,
 )
 from .logging import History, Logs
-from .loops import LoopCallbackBase, LoopElement, LoopState, loop
+from .loops.fit_loop import fit_loop as fit_loop
+from .loops.loop import LoopCallbackBase, LoopElement, LoopState, loop
 from .schedules import always, every, never, piecewise
 from .strategies import (
     JIT,

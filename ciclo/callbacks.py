@@ -10,7 +10,7 @@ from pkbar import Kbar
 from tqdm import tqdm
 
 from ciclo.logging import Logs
-from ciclo.loops import (
+from ciclo.loops.loop import (
     CallbackOutput,
     LoopCallbackBase,
     LoopOutput,

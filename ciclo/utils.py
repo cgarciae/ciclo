@@ -6,7 +6,7 @@ import jax
 import numpy as np
 
 from ciclo.logging import Elapsed, History, Logs
-from ciclo.loops import LoopFunctionCallback
+from ciclo.loops.loop import LoopFunctionCallback
 from ciclo.timetracking import Period
 from ciclo.types import A, B, Batch, LogsLike
 

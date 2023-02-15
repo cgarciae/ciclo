@@ -105,6 +105,22 @@ class LoopFunctionCallback(LoopCallbackBase[S]):
         return to_standard_outputs(outputs, loop_state.state)
 
 
+def _make_call(loop_state: LoopState[S], callback: LoopCallback[S]):
+    try:
+        loop_state.elapsed = loop_state.elapsed.update_time()
+        logs, state = callback.__loop_callback__(loop_state)
+        loop_state.logs.merge(logs)
+        loop_state.accumulated_logs.merge(logs)
+        loop_state.state = state
+    except BaseException as e:
+        raise type(e)(f"Error in callback {callback}: {e}") from e
+
+
+# -------------------------------------
+# loops
+# -------------------------------------
+
+
 def loop(
     state: S,
     dataset: Iterable[B],
@@ -152,6 +168,8 @@ def loop(
         )
         for schedule, callbacks in tasks.items()
     ]
+    # prone empty tasks
+    schedule_callbacks = [x for x in schedule_callbacks if len(x[1]) > 0]
 
     try:
         for i, (elapsed, batch) in enumerate(
@@ -196,17 +214,6 @@ def loop(
             raise
 
     return loop_state.state, loop_state.history, loop_state.elapsed
-
-
-def _make_call(loop_state: LoopState[S], callback: LoopCallback[S]):
-    try:
-        loop_state.elapsed = loop_state.elapsed.update_time()
-        logs, state = callback.__loop_callback__(loop_state)
-        loop_state.logs.merge(logs)
-        loop_state.accumulated_logs.merge(logs)
-        loop_state.state = state
-    except BaseException as e:
-        raise type(e)(f"Error in callback {callback}: {e}") from e
 
 
 # ---------------------------------------
