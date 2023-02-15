@@ -1,8 +1,9 @@
 from typing import Any, Callable, Dict, Iterable, List, Optional, Union
 
 from ciclo import callbacks as callbacks_lib
-from ciclo import loop, schedules
+from ciclo import schedules
 from ciclo.logging import History
+from ciclo.loops import loop
 from ciclo.loops.loop import LoopCallbackLike, LoopOutput
 from ciclo.schedules import ScheduleLike
 from ciclo.timetracking import Elapsed, Period, PeriodLike

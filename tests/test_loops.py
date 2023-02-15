@@ -1,4 +1,5 @@
 import numpy as np
+import pytest
 
 import ciclo
 
@@ -23,6 +24,7 @@ class TestLoops:
         assert state["a"] == 10
         assert state["b"] == 5
 
+    @pytest.mark.skip(reason="Integer and boolean schedules removed for now")
     def test_integer_schedules(self):
         def increment(state, key):
             state[key] += 1
