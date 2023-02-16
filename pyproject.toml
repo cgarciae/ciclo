@@ -17,7 +17,7 @@ numpy = "*"
 
 
 [tool.poetry.group.dev.dependencies]
-black = {version = "==22.12.0"}
+black = {version = "==23.1.0"}
 tensorflow-cpu = ">=2.0.0"
 tensorflow-datasets = ">=4.0.0"
 pytest = "7.1.3"

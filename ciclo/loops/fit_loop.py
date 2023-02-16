@@ -14,27 +14,39 @@ FitScheduleLike = Union[ScheduleLike, str]
 FitInputTasks = Dict[FitScheduleLike, CallbackOrList]
 FitCallback = Any
 
-FIT_CALLBACK_NAMES = [
-    "train_step",
-    "test_step",
-    # "validation_step",
-    "reset_step",
+PREDICT_NAMES = {
+    PREDICT_STEP := "predict_step",
     # ----------------
-    "on_train_begin",
-    "on_train_end",
-    # "on_epoch_begin",
-    "on_epoch_end",
-    # "on_predict_batch_begin",
-    # "on_predict_batch_end",
-    # "on_predict_begin",
-    # "on_predict_end",
-    "on_test_batch_begin",
-    "on_test_batch_end",
-    "on_test_begin",
-    "on_test_end",
-    "on_train_batch_begin",
-    "on_train_batch_end",
-]
+    ON_PREDICT_BATCH_BEGIN := "on_predict_batch_begin",
+    ON_PREDICT_BATCH_END := "on_predict_batch_end",
+    ON_PREDICT_BEGIN := "on_predict_begin",
+    ON_PREDICT_END := "on_predict_end",
+}
+
+EVAL_NAMES = {
+    TEST_STEP := "test_step",
+    RESET_STEP := "reset_step",
+    # ----------------
+    ON_TEST_BATCH_BEGIN := "on_test_batch_begin",
+    ON_TEST_BATCH_END := "on_test_batch_end",
+    ON_TEST_BEGIN := "on_test_begin",
+    ON_TEST_END := "on_test_end",
+}
+
+FIT_NAMES = {
+    TRAIN_STEP := "train_step",
+    RESET_STEP := "reset_step",
+    # ----------------
+    ON_TRAIN_BEGIN := "on_train_begin",
+    ON_TRAIN_END := "on_train_end",
+    # NOTE: due to a choice in the implementation of the fit_loop
+    # there is no ON_EPOCH_BEGIN, instead you can use a combination of
+    # ON_TRAIN_BEGIN and ON_EPOCH_END
+    # ON_EPOCH_BEGIN := "on_epoch_begin",
+    ON_EPOCH_END := "on_epoch_end",
+    ON_TRAIN_BATCH_BEGIN := "on_train_batch_begin",
+    ON_TRAIN_BATCH_END := "on_train_batch_end",
+}
 
 
 def fit_loop(
@@ -75,7 +87,7 @@ def fit_loop(
     }
 
     # extract callbacks from state
-    for name in FIT_CALLBACK_NAMES:
+    for name in FIT_NAMES | EVAL_NAMES:
         if hasattr(state, name):
             # note: here we get an unbounded method
             callback = getattr(type(state), name)
@@ -83,7 +95,7 @@ def fit_loop(
 
     # extract callbacks from callbacks
     if callbacks is not None:
-        for name in FIT_CALLBACK_NAMES:
+        for name in FIT_NAMES | EVAL_NAMES:
             if hasattr(callbacks, name):
                 callback = getattr(callbacks, name)
                 named_tasks.setdefault(name, []).append(callback)
@@ -100,18 +112,18 @@ def fit_loop(
             time=eval_every.time,
         )
 
-        eval_on_start = named_tasks.pop("on_test_begin", None)
+        eval_on_start = named_tasks.pop(ON_TEST_BEGIN, None)
         eval_tasks = {
             schedules.every(1): [
-                *named_tasks.pop("on_test_batch_begin", []),
-                *named_tasks.pop("test_step", []),
-                *named_tasks.pop("on_test_batch_end", []),
+                *named_tasks.pop(ON_TEST_BATCH_BEGIN, []),
+                *named_tasks.pop(TEST_STEP, []),
+                *named_tasks.pop(ON_TEST_BATCH_END, []),
             ],
         }
-        eval_on_end = named_tasks.pop("on_test_end", None)
+        eval_on_end = named_tasks.pop(ON_TEST_END, None)
 
         train_tasks[eval_schedule] = [
-            *named_tasks.pop("reset_step", []),
+            *named_tasks.pop(RESET_STEP, []),
             callbacks_lib.inner_loop(
                 "test",
                 lambda state: loop.loop(
@@ -123,26 +135,26 @@ def fit_loop(
                     stop=eval_duration,
                 ),
             ),
-            *named_tasks.pop("on_epoch_end", []),
+            *named_tasks.pop(ON_EPOCH_END, []),
         ]
     else:
-        named_tasks.pop("reset_step", None)
-        named_tasks.pop("on_test_begin", None)
-        named_tasks.pop("on_test_batch_begin", None)
-        named_tasks.pop("test_step", None)
-        named_tasks.pop("on_test_batch_end", None)
-        named_tasks.pop("on_test_end", None)
-        named_tasks.pop("on_epoch_end", None)
+        named_tasks.pop(RESET_STEP, None)
+        named_tasks.pop(ON_TEST_BEGIN, None)
+        named_tasks.pop(ON_TEST_BATCH_BEGIN, None)
+        named_tasks.pop(TEST_STEP, None)
+        named_tasks.pop(ON_TEST_BATCH_END, None)
+        named_tasks.pop(ON_TEST_END, None)
+        named_tasks.pop(ON_EPOCH_END, None)
 
     train_tasks[schedules.every(1)] = [
-        *named_tasks.pop("on_train_batch_begin", []),
-        *named_tasks.pop("train_step", []),
-        *named_tasks.pop("on_train_batch_end", []),
+        *named_tasks.pop(ON_TRAIN_BATCH_BEGIN, []),
+        *named_tasks.pop(TRAIN_STEP, []),
+        *named_tasks.pop(ON_TRAIN_BATCH_END, []),
     ]
     train_tasks.update(additionl_tasks)
 
-    on_start = named_tasks.pop("on_train_begin", None)
-    on_end = named_tasks.pop("on_train_end", None)
+    on_start = named_tasks.pop(ON_TRAIN_BEGIN, None)
+    on_end = named_tasks.pop(ON_TRAIN_END, None)
 
     if len(named_tasks) > 0:
         raise ValueError(f"Unknown tasks: {named_tasks}")
@@ -152,6 +164,77 @@ def fit_loop(
         dataset,
         on_start=on_start,
         tasks=train_tasks,
+        on_end=on_end,
+        stop=stop,
+        history=history,
+        elapsed=elapsed,
+        catch_keyboard_interrupt=catch_keyboard_interrupt,
+        metadata=metadata,
+    )
+
+
+def test_loop(
+    state: S,
+    dataset: Iterable[B],
+    tasks: Optional[TestInputTasks] = None,
+    *,
+    callbacks: Optional[TestCallback] = None,
+    stop: Optional[PeriodLike] = None,
+    history: Optional[History] = None,
+    elapsed: Optional[Elapsed] = None,
+    catch_keyboard_interrupt: bool = True,
+    metadata: Optional[Any] = None,
+) -> LoopOutput[S]:
+    if tasks is None:
+        tasks = {}
+
+    additionl_tasks: Dict[ScheduleLike, CallbackOrList] = {}
+    named_tasks: Dict[str, CallbackOrList] = {}
+    for schedule in list(tasks.keys()):
+        if isinstance(schedule, str):
+            named_tasks[schedule] = tasks.pop(schedule)
+        else:
+            additionl_tasks[schedule] = tasks.pop(schedule)
+
+    named_tasks = {
+        schedule: callbacks if isinstance(callbacks, list) else [callbacks]
+        for schedule, callbacks in named_tasks.items()
+    }
+
+    # extract callbacks from state
+    for name in TEST_NAMES:
+        if hasattr(state, name):
+            # note: here we get an unbounded method
+            callback = getattr(type(state), name)
+            named_tasks.setdefault(name, []).insert(0, callback)
+
+    # extract callbacks from callbacks
+    if callbacks is not None:
+        for name in TEST_NAMES:
+            if hasattr(callbacks, name):
+                callback = getattr(callbacks, name)
+                named_tasks.setdefault(name, []).append(callback)
+
+    test_tasks = {
+        schedules.every(1): [
+            *named_tasks.pop(ON_TEST_BATCH_BEGIN, []),
+            *named_tasks.pop(TEST_STEP, []),
+            *named_tasks.pop(ON_TEST_BATCH_END, []),
+        ],
+    }
+    test_tasks.update(additionl_tasks)
+
+    on_start = named_tasks.pop(ON_TEST_BEGIN, None)
+    on_end = named_tasks.pop(ON_TEST_END, None)
+
+    if len(named_tasks) > 0:
+        raise ValueError(f"Unknown tasks: {named_tasks}")
+
+    return loop.loop(
+        state,
+        dataset,
+        on_start=on_start,
+        tasks=test_tasks,
         on_end=on_end,
         stop=stop,
         history=history,

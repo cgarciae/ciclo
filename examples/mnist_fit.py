@@ -23,6 +23,7 @@ ds_train = ds_train.repeat().shuffle(1024).batch(batch_size).prefetch(1)
 ds_test: tf.data.Dataset = tfds.load("mnist", split="test")
 ds_test = ds_test.batch(32, drop_remainder=True).prefetch(1)
 
+
 # Define model
 class Linear(nn.Module):
     @nn.compact
@@ -92,11 +93,13 @@ total_samples = 32 * 10000
 total_steps = total_samples // batch_size
 eval_steps = total_steps // 10
 log_steps = total_steps // 50
+
+
 state, history, _ = ciclo.fit_loop(
     state,
     ds_train.as_numpy_iterator(),
     {
-        "on_epoch_end": [
+        ciclo.on_epoch_end: [
             ciclo.checkpoint(
                 f"logdir/mnist_fit/{int(time())}", monitor="accuracy_test", mode="max"
             )
