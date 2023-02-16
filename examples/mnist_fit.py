@@ -95,7 +95,7 @@ eval_steps = total_steps // 10
 log_steps = total_steps // 50
 
 
-state, history, _ = ciclo.fit_loop(
+state, history, _ = ciclo.train_loop(
     state,
     ds_train.as_numpy_iterator(),
     {
@@ -106,8 +106,8 @@ state, history, _ = ciclo.fit_loop(
         ],
         ciclo.every(1): ciclo.keras_bar(total=total_steps),
     },
-    eval_dataset=lambda: ds_test.as_numpy_iterator(),
-    eval_every=eval_steps,
+    test_dataset=lambda: ds_test.as_numpy_iterator(),
+    test_every=eval_steps,
     stop=total_steps,
 )
 

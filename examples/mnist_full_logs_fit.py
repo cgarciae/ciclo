@@ -23,6 +23,7 @@ ds_train = ds_train.repeat().shuffle(1024).batch(batch_size).prefetch(1)
 ds_valid: tf.data.Dataset = tfds.load("mnist", split="test")
 ds_valid = ds_valid.batch(32, drop_remainder=True).prefetch(1)
 
+
 # Define model
 class Linear(nn.Module):
     @nn.compact
@@ -99,7 +100,7 @@ total_samples = 32 * 100
 total_steps = total_samples // batch_size
 eval_steps = total_steps // 10
 log_steps = total_steps // 50
-state, history, _ = ciclo.fit_loop(
+state, history, _ = ciclo.train_loop(
     state,
     ds_train.as_numpy_iterator(),
     {

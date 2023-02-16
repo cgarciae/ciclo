@@ -24,7 +24,9 @@ from .loops.fit_loop import ON_TRAIN_END as on_train_end
 from .loops.fit_loop import RESET_STEP as reset_step
 from .loops.fit_loop import TEST_STEP as test_step
 from .loops.fit_loop import TRAIN_STEP as train_step
-from .loops.fit_loop import fit_loop as fit_loop
+from .loops.fit_loop import predict_loop as predict_loop
+from .loops.fit_loop import test_loop as test_loop
+from .loops.fit_loop import train_loop as train_loop
 from .loops.loop import LoopCallbackBase, LoopElement, LoopState, loop
 from .schedules import always as always
 from .schedules import every as every
