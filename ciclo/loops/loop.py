@@ -106,14 +106,14 @@ class LoopFunctionCallback(LoopCallbackBase[S]):
 
 
 def _make_call(loop_state: LoopState[S], callback: LoopCallback[S]):
-    try:
-        loop_state.elapsed = loop_state.elapsed.update_time()
-        logs, state = callback.__loop_callback__(loop_state)
-        loop_state.logs.merge(logs)
-        loop_state.accumulated_logs.merge(logs)
-        loop_state.state = state
-    except BaseException as e:
-        raise type(e)(f"Error in callback {callback}: {e}") from e
+    # try:
+    loop_state.elapsed = loop_state.elapsed.update_time()
+    logs, state = callback.__loop_callback__(loop_state)
+    loop_state.logs.merge(logs)
+    loop_state.accumulated_logs.merge(logs)
+    loop_state.state = state
+    # except BaseException as e:
+    #     raise type(e)(f"Error in callback {callback}: {e}") from e
 
 
 # -------------------------------------
@@ -134,7 +134,6 @@ def loop(
     catch_keyboard_interrupt: bool = True,
     metadata: Optional[Any] = None,
 ) -> LoopOutput[S]:
-
     if history is None:
         history = History()
 

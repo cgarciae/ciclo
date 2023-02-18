@@ -32,6 +32,8 @@ from .schedules import always as always
 from .schedules import every as every
 from .schedules import never as never
 from .schedules import piecewise as piecewise
+from .states.flax_state import FlaxState as FlaxState
+from .states.flax_state import create_flax_state as create_flax_state
 from .strategies import (
     JIT,
     DataParallel,
