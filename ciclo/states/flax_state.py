@@ -29,6 +29,7 @@ import ciclo
 from ciclo import managed
 from ciclo.strategies import Strategy
 from ciclo.timetracking import Elapsed
+from ciclo.types import CluMetric, MetricLike
 
 Pytree = Any
 Loss = Callable[..., jax.Array]
@@ -37,15 +38,94 @@ KeyPath = Tuple[Index, ...]
 M = TypeVar("M", bound=nn.Module)
 
 
-def static(**kwargs):
+def static_field(**kwargs):
     return struct.field(pytree_node=False, **kwargs)
 
 
-class FunctionNode(struct.PyTreeNode):
-    f: Callable = static()
+def node_field(**kwargs):
+    return struct.field(pytree_node=True, **kwargs)
 
-    def __call__(self, *args, **kwargs) -> Any:
-        return self.f(*args, **kwargs)
+
+class Metrics(struct.PyTreeNode, MetricLike):
+    metrics: Dict[str, Union[CluMetric, MetricLike]]
+
+    @classmethod
+    def create(cls, metrics: Dict[str, Any]):
+        # validate metrics
+        for name, metric in metrics.items():
+            if not isinstance(metric, (CluMetric, MetricLike)):
+                raise ValueError(f"Invalid metric type for {name}: {type(metric)}")
+
+        return cls(
+            metrics=metrics,
+        )
+
+    def reset(self):
+        metrics = {}
+        for name, metric in self.metrics.items():
+            if isinstance(metric, MetricLike):
+                metrics[name] = metric.reset()
+            elif isinstance(metric, CluMetric):
+                metrics[name] = metric.empty()
+            else:
+                raise ValueError(f"Invalid metric type for {name}: {type(metric)}")
+
+        return self.replace(metrics=metrics)
+
+    def update(self, **kwargs):
+        metrics = {}
+        for name, metric in self.metrics.items():
+            if isinstance(metric, MetricLike):
+                metrics[name] = metric.update(**kwargs)
+            elif isinstance(metric, CluMetric):
+                metrics[name] = metric.from_model_output(**kwargs)
+            else:
+                raise ValueError(f"Invalid metric type for {name}: {type(metric)}")
+
+        return self.replace(metrics=metrics)
+
+    def merge(self, other: "Metrics") -> "Metrics":
+        metrics = {}
+        for name, metric in self.metrics.items():
+            other_metric = other.metrics[name]
+            if type(metric) != type(other_metric):
+                raise ValueError(
+                    f"Metric {name} has different types: {type(metric)} and {type(other_metric)}"
+                )
+            if isinstance(metric, MetricLike):
+                assert isinstance(other_metric, MetricLike)
+                metrics[name] = metric.merge(other_metric)
+            elif isinstance(metric, CluMetric):
+                assert isinstance(other_metric, CluMetric)
+                metrics[name] = metric.merge(other_metric)
+            else:
+                raise ValueError(f"Invalid metric type for {name}: {type(metric)}")
+
+        return self.replace(metrics=metrics)
+
+    def compute(self):
+        logs = {}
+        for name, metric in self.metrics.items():
+            if isinstance(metric, MetricLike):
+                logs[name] = metric.compute()
+            elif isinstance(metric, CluMetric):
+                logs[name] = metric.compute()
+            else:
+                raise ValueError(f"Invalid metric type for {name}: {type(metric)}")
+
+        return logs
+
+    def aggregate(self):
+        metrics = {}
+        for name, metric in self.metrics.items():
+            if isinstance(metric, MetricLike):
+                metrics[name] = metric.aggregate()
+            elif isinstance(metric, CluMetric):
+                metrics[name] = metric.reduce()
+            else:
+                raise ValueError(f"Invalid metric type for {name}: {type(metric)}")
+
+        return self.replace(metrics=metrics)
 
 
 class FlaxState(Generic[M], managed.ManagedState):
@@ -54,21 +134,18 @@ class FlaxState(Generic[M], managed.ManagedState):
     key: jax.random.KeyArray
     batch_stats: Optional[FrozenVariableDict]
     variables: FrozenVariableDict
-    metrics: Dict[str, Any]
-    losses: Dict[str, Loss] = static()
-    module_fn: Callable[[], M] = static()
+    stateful_metrics: Metrics
+    stateless_metrics: Dict[str, Callable[..., jax.Array]] = static_field()
+    losses: Dict[str, Loss] = static_field()
+    module_fn: Callable[[], M] = static_field()
 
-    mutable_init: CollectionFilter = static()
-    mutable_train: CollectionFilter = static()
-    mutable_eval: CollectionFilter = static()
-    rngs_init: Sequence[str] = static()
-    rngs_train: Sequence[str] = static()
-    rngs_eval: Sequence[str] = static()
-    method_init: Union[str, Callable[..., Any]] = static()
-    method_train: Union[str, Callable[..., Any]] = static()
-    method_eval: Union[str, Callable[..., Any]] = static()
-    init_training_value: bool = static()
-    logs_full_path: bool = static()
+    mutable_train: CollectionFilter = static_field()
+    mutable_eval: CollectionFilter = static_field()
+    rngs_train: Sequence[str] = static_field()
+    rngs_eval: Sequence[str] = static_field()
+    method_train: Union[str, Callable[..., Any]] = static_field()
+    method_eval: Union[str, Callable[..., Any]] = static_field()
+    logs_full_path: bool = static_field()
 
     @property
     def module(self) -> M:
@@ -79,40 +156,11 @@ class FlaxState(Generic[M], managed.ManagedState):
         key: jax.random.KeyArray,
         inputs: Any,
         training: bool,
-        is_initializing: bool = False,
     ):
-        method = (
-            self.method_init
-            if is_initializing
-            else self.method_train
-            if training
-            else self.method_eval
-        )
+        method = self.method_train if training else self.method_eval
         method = _unbounded_method(self.module, method)
-        mutable = (
-            self.mutable_init
-            if is_initializing
-            else self.mutable_train
-            if training
-            else self.mutable_eval
-        )
-        rng_names = (
-            self.rngs_init
-            if is_initializing
-            else self.rngs_train
-            if training
-            else self.rngs_eval
-        )
-
-        if is_initializing:
-            apply_fn = (
-                lambda variables, *args, rngs, **kwargs: self.module.init_with_output(
-                    rngs, *args, **kwargs
-                )
-            )
-        else:
-            apply_fn = self.module.apply
-
+        mutable = self.mutable_train if training else self.mutable_eval
+        rng_names = self.rngs_train if training else self.rngs_eval
         arg_names = _function_argument_names(method)
         args, kwargs = _split_args_kwargs(inputs)
 
@@ -131,7 +179,7 @@ class FlaxState(Generic[M], managed.ManagedState):
         if self.batch_stats is not None:
             variables = variables.copy({"batch_stats": self.batch_stats})
 
-        apply_output = apply_fn(
+        apply_output = self.module.apply(
             variables,
             *args,
             rngs=rngs,
@@ -151,15 +199,6 @@ class FlaxState(Generic[M], managed.ManagedState):
             params=variables.get("params", None),
             batch_stats=variables.get("batch_stats", None),
         )
-
-    def init(self, inputs: Any):
-        outputs, self = self.apply(
-            self.key,
-            inputs,
-            training=self.init_training_value,
-            is_initializing=True,
-        )
-        return self
 
     @managed.train_step
     def train_step(self, batch, elapsed: Elapsed):
@@ -185,6 +224,10 @@ class FlaxState(Generic[M], managed.ManagedState):
             logs.add_output(name, value)
 
         return logs, None
+
+    @managed.step
+    def reset_step(self):
+        return self.replace(stateful_metrics=self.stateful_metrics.reset())
 
     def _step(self, batch, elapsed: Elapsed, training: bool):
         inputs, labels, sample_weight = unpack_x_y_sample_weight(batch)
@@ -222,13 +265,24 @@ class FlaxState(Generic[M], managed.ManagedState):
         for name, loss in self.get_aux_losses().items():
             logs.add_loss(name, loss)
 
-        for name, metric in self.metrics.items():
+        if "losses" not in logs:
+            raise ValueError("No losses were added to the logs.")
+        else:
+            for name, loss in logs["losses"].items():
+                if name not in arguments:
+                    arguments[name] = loss
+
+        for name, metric in self.stateless_metrics.items():
             if callable(metric):
                 logs.add_metric(name, metric(**arguments))
             else:
                 raise TypeError(
                     f"Unexpected metric type {type(metric)} for metric {name}."
                 )
+
+        logs.add_stateful_metric(
+            "stateful_metrics", self.stateful_metrics.update(**arguments)
+        )
 
         for name, metric in self.get_aux_metrics().items():
             logs.add_metric(name, metric)
@@ -258,6 +312,34 @@ class FlaxState(Generic[M], managed.ManagedState):
             return {}
 
 
+def init_module(
+    module: nn.Module,
+    inputs: Any,
+    key: jax.random.KeyArray,
+    mutable_init: CollectionFilter,
+    rngs_init: Sequence[str],
+    method_init: Union[str, Callable[..., Any]],
+    init_training_value: bool,
+):
+    method = _unbounded_method(module, method_init)
+    arg_names = _function_argument_names(method)
+    args, kwargs = _split_args_kwargs(inputs)
+
+    if arg_names is not None and "training" in arg_names and "training" not in kwargs:
+        kwargs["training"] = init_training_value
+
+    rngs = _split_into_collection(key, rngs_init)
+
+    variables = module.init(
+        rngs,
+        *args,
+        mutable=mutable_init,
+        method=method,
+        **kwargs,
+    )
+    return variables
+
+
 def create_flax_state(
     module: M,
     inputs: Any,
@@ -285,46 +367,62 @@ def create_flax_state(
     if metrics is None:
         metrics = {}
 
-    metrics = {
-        k: FunctionNode(v) if callable(v) else v
-        for k, v in metrics.items()
-        if v is not None
-    }
+    stateful_metrics = {}
+    stateless_metrics = {}
 
-    state = FlaxState(
+    for name, metric in metrics.items():
+        if isinstance(metric, (CluMetric, MetricLike)):
+            stateful_metrics[name] = metric
+        elif issubclass(metric, CluMetric):
+            stateful_metrics[name] = metric.empty()
+        elif callable(metric):
+            stateless_metrics[name] = metric
+        else:
+            raise ValueError(f"Invalid metric type for {name}: {type(metric)}")
+
+    variables = init_module(
+        module=module,
+        inputs=inputs,
+        key=key,
+        mutable_init=mutable_init,
+        rngs_init=rngs_init,
+        method_init=method_init,
+        init_training_value=init_training_value,
+    )
+    if "params" in variables:
+        variables, params = variables.pop("params")
+    else:
+        params = None
+
+    if "batch_stats" in variables:
+        variables, batch_stats = variables.pop("batch_stats")
+    else:
+        batch_stats = None
+
+    state = FlaxState.create(
         # TrainState
-        step=0,
         apply_fn=module.apply,
-        params=None,
+        params=params,
         tx=tx,
-        opt_state=None,
         # ManagedState
         strategy=strategy,
         # FlaxState
         key=key,
-        batch_stats=None,
-        variables=FrozenDict(),
+        batch_stats=batch_stats,
+        variables=variables,
         losses=losses,
-        metrics=metrics,
+        stateful_metrics=Metrics.create(stateful_metrics),
+        stateless_metrics=stateless_metrics,
         module_fn=lambda: module,
-        mutable_init=mutable_init,
         mutable_train=mutable_train,
         mutable_eval=mutable_eval,
-        rngs_init=rngs_init,
         rngs_train=rngs_train,
         rngs_eval=rngs_eval,
-        method_init=method_init,
         method_train=method_train,
         method_eval=method_eval,
-        init_training_value=init_training_value,
         logs_full_path=logs_full_path,
     )
-    state = state.init(inputs)
-    kwargs = state.__dict__.copy()
-    # remove args initialized by TrainState.create
-    kwargs.pop("step")
-    kwargs.pop("opt_state")
-    return FlaxState.create(**kwargs)
+    return state
 
 
 def _function_argument_names(f: Callable) -> Optional[List[str]]:

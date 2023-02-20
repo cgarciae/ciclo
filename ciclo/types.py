@@ -1,5 +1,15 @@
 import importlib.util
-from typing import Any, Callable, Dict, Mapping, Tuple, TypeVar
+from abc import abstractmethod
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Mapping,
+    Protocol,
+    Tuple,
+    TypeVar,
+    runtime_checkable,
+)
 
 import ciclo
 
@@ -18,3 +28,26 @@ A = TypeVar("A")
 S = TypeVar("S", bound=State)
 B = TypeVar("B", bound=Batch)
 Schedule = Callable[["ciclo.Elapsed"], bool]
+
+
+@runtime_checkable
+class MetricLike(Protocol):
+    @abstractmethod
+    def reset(self: A) -> A:
+        ...
+
+    @abstractmethod
+    def update(self: A, **kwargs) -> A:
+        ...
+
+    @abstractmethod
+    def merge(self: A, other: A) -> A:
+        ...
+
+    @abstractmethod
+    def compute(self) -> Any:
+        ...
+
+    @abstractmethod
+    def aggregate(self: A) -> A:
+        ...

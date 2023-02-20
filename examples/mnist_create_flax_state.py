@@ -1,6 +1,8 @@
 # %%
+from pathlib import Path
 from time import time
 
+import clu.metrics
 import flax.linen as nn
 import jax
 import jax.numpy as jnp
@@ -9,7 +11,6 @@ import numpy as np
 import optax
 import tensorflow as tf
 import tensorflow_datasets as tfds
-from clu.metrics import Accuracy, Average, Collection
 from flax import struct
 from flax.training import train_state
 
@@ -40,34 +41,42 @@ class Linear(nn.Module):
         return x
 
 
+@struct.dataclass
+class Accuracy(clu.metrics.Accuracy):
+    @classmethod
+    def from_model_output(cls, *, preds: jax.Array, target: jax.Array, **kwargs):
+        return super().from_model_output(logits=preds, labels=target)
+
+
+AverageLoss = clu.metrics.Average.from_output("loss")
+
+
+def cross_entropy_loss(preds, target, **kwargs):
+    return optax.softmax_cross_entropy_with_integer_labels(
+        logits=preds, labels=target
+    ).mean()
+
+
 # Initialize state
 model = Linear()
 state = ciclo.create_flax_state(
     model,
     inputs=jnp.empty((1, 28, 28, 1)),
-    tx=optax.adam(1e-3),
-    losses={
-        "loss": lambda preds, target, **kw: optax.softmax_cross_entropy_with_integer_labels(
-            logits=preds, labels=target
-        ).mean()
-    },
-    metrics={
-        "accuracy": lambda preds, target, **kw: Accuracy.from_model_output(
-            logits=preds, labels=target
-        ).compute()
-    },
+    tx=optax.adamw(1e-3),
+    losses={"loss": cross_entropy_loss},
+    metrics={"accuracy": Accuracy, "avg_loss": AverageLoss},
 )
 state, history, _ = ciclo.train_loop(
     state,
     ds_train.as_numpy_iterator(),
-    {
-        ciclo.on_epoch_end: [
-            ciclo.checkpoint(
-                f"logdir/mnist_fit/{int(time())}", monitor="accuracy_test", mode="max"
-            )
-        ],
-        ciclo.every(1): ciclo.keras_bar(total=total_steps),
-    },
+    callbacks=[
+        ciclo.keras_bar(total=total_steps),
+        ciclo.checkpoint(
+            f"logdir/{Path(__file__).stem}/{int(time())}",
+            monitor="accuracy_test",
+            mode="max",
+        ),
+    ],
     test_dataset=lambda: ds_test.as_numpy_iterator(),
     test_every=eval_steps,
     stop=total_steps,
@@ -75,20 +84,17 @@ state, history, _ = ciclo.train_loop(
 
 # %%
 
-steps, loss, accuracy = history.collect("steps", "loss", "accuracy")
-steps_test, loss_test, accuracy_test = history.collect(
-    "steps", "loss_test", "accuracy_test"
+steps, avg_loss, accuracy, avg_loss_test, accuracy_test = history.collect(
+    "steps", "avg_loss", "accuracy", "avg_loss_test", "accuracy_test"
 )
 
 _, axs = plt.subplots(1, 2)
-axs[0].plot(steps, loss, label="train")
-axs[0].plot(steps_test, loss_test, label="test")
+axs[0].plot(steps, avg_loss, label="train")
+axs[0].plot(steps, avg_loss_test, label="test")
 axs[0].legend()
-axs[0].set_title("Loss")
+axs[0].set_title("Avg Loss")
 axs[1].plot(steps, accuracy, label="train")
-axs[1].plot(steps_test, accuracy_test, label="test")
+axs[1].plot(steps, accuracy_test, label="test")
 axs[1].legend()
 axs[1].set_title("Accuracy")
 plt.show()
-
-# %%

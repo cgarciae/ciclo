@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, replace
-from typing import Any, Callable, Dict, Optional, TypeVar, overload
+from typing import Any, Callable, Dict, Optional, TypeVar, Union, overload
 
 import jax
 import jax.numpy as jnp
@@ -9,7 +9,7 @@ from flax import jax_utils
 from typing_extensions import Protocol, runtime_checkable
 
 from ciclo.loops.loop import GeneralCallback
-from ciclo.types import CluMetric
+from ciclo.types import CluMetric, MetricLike
 
 
 class Dataclass(Protocol):
@@ -24,7 +24,7 @@ class HasKey(Protocol):
 StrategyConstructor = Callable[[], "Strategy"]
 A = TypeVar("A")
 S = TypeVar("S", bound=Dataclass)
-ME = TypeVar("ME", bound=CluMetric)
+Metric = Any
 
 
 _REGISTRY: Dict[str, StrategyConstructor] = {}
@@ -136,7 +136,7 @@ class Strategy(ABC):
     def lift_batch_size(self, batch_size: int) -> int:
         return batch_size
 
-    def handle_metric(self, metric: ME) -> ME:
+    def handle_metric(self, metric: Metric) -> Metric:
         return metric
 
     def handle_grads(
@@ -223,11 +223,16 @@ class DataParallel(Strategy):
 
     def handle_metric(
         self,
-        metric: ME,
-    ) -> ME:
+        metric: Metric,
+    ) -> Metric:
         # metrics = jax.lax.stop_gradient(metrics)
         metric = jax.lax.all_gather(metric, axis_name=self.axis_name)
-        metric = metric.reduce()
+        if isinstance(metric, CluMetric):
+            metric = metric.reduce()
+        elif isinstance(metric, MetricLike):
+            metric = metric.aggregate()
+        else:
+            raise ValueError(f"Unknown metric type {type(metric)}")
         return metric
 
     def handle_grads(self, grads: A) -> A:

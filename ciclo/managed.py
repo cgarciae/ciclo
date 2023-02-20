@@ -24,8 +24,16 @@ from ciclo.loops.loop import (
     to_standard_outputs,
 )
 from ciclo.strategies import Strategy, get_strategy
-from ciclo.types import Batch, Broadcasts, CluMetric, LogsLike, Statics
+from ciclo.types import Batch, Broadcasts, CluMetric, LogsLike, MetricLike, Statics
 from ciclo.utils import inject
+
+Loss = jax.Array
+
+S = TypeVar("S", bound="ManagedState")
+A = TypeVar("A")
+B = TypeVar("B")
+
+ManagedCallbackCallable = Callable[[Batch, S, Broadcasts, Statics], CallbackOutput[S]]
 
 
 @runtime_checkable
@@ -36,15 +44,6 @@ class HasStrategy(Protocol):
 @runtime_checkable
 class HasBatchStats(Protocol):
     batch_stats: Any
-
-
-Loss = jax.Array
-
-S = TypeVar("S", bound="ManagedState")
-A = TypeVar("A")
-B = TypeVar("B")
-
-ManagedCallbackCallable = Callable[[Batch, S, Broadcasts, Statics], CallbackOutput[S]]
 
 
 @runtime_checkable
@@ -153,9 +152,21 @@ class ManagedStep(LoopCallbackBase[S]):
             if "stateful_metrics" in logs:
                 stateful_metrics = logs["stateful_metrics"]
                 assert isinstance(stateful_metrics, MutableMapping)
-                for key, value in stateful_metrics.items():
+                for key, value in list(stateful_metrics.items()):
                     if isinstance(value, CluMetric):
-                        metric: CluMetric = getattr(state, key)
+                        metric = getattr(state, key)
+                        assert isinstance(metric, CluMetric)
+                        value = strategy.handle_metric(value)
+                        metric = metric.merge(value)
+                        state = state.replace(**{key: metric})
+                        metric_value = metric.compute()
+                        if isinstance(metric_value, Mapping):
+                            stateful_metrics.update(metric_value)
+                        else:
+                            stateful_metrics[key] = metric_value
+                    elif isinstance(value, MetricLike):
+                        metric = getattr(state, key)
+                        assert isinstance(metric, MetricLike)
                         value = strategy.handle_metric(value)
                         metric = metric.merge(value)
                         state = state.replace(**{key: metric})

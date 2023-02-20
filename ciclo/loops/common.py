@@ -114,9 +114,28 @@ def train_loop(
             named_tasks_test[name] = named_tasks.pop(name)
 
     train_tasks = {}
-    if test_dataset is not None or test_every is not None:
-        if test_dataset is None or test_every is None:
-            raise ValueError("eval_interval and eval_dataset must be set together")
+
+    train_tasks[schedules.every(1)] = [
+        *named_tasks.get(ON_TRAIN_BATCH_BEGIN, []),
+        *named_tasks.get(TRAIN_STEP, []),
+    ]
+
+    if test_every is not None:
+        test_tasks = []
+        test_tasks += named_tasks.pop(RESET_STEP, [])
+        if test_dataset is not None:
+            test_tasks.append(
+                callbacks_lib.inner_loop(
+                    test_name,
+                    lambda state: test_loop(
+                        state,
+                        test_dataset(),
+                        tasks=named_tasks_test,
+                        stop=test_duration,
+                    ),
+                )
+            )
+        test_tasks += named_tasks.pop(ON_EPOCH_END, [])
 
         eval_schedule = schedules.every(
             steps=test_every.steps,
@@ -124,25 +143,12 @@ def train_loop(
             time=test_every.time,
         )
 
-        train_tasks[eval_schedule] = [
-            *named_tasks.pop(RESET_STEP, []),
-            callbacks_lib.inner_loop(
-                test_name,
-                lambda state: test_loop(
-                    state,
-                    test_dataset(),
-                    tasks=named_tasks_test,
-                    stop=test_duration,
-                ),
-            ),
-            *named_tasks.pop(ON_EPOCH_END, []),
-        ]
+        train_tasks[eval_schedule] = test_tasks
 
     train_tasks[schedules.every(1)] = [
-        *named_tasks.get(ON_TRAIN_BATCH_BEGIN, []),
-        *named_tasks.get(TRAIN_STEP, []),
         *named_tasks.get(ON_TRAIN_BATCH_END, []),
     ]
+
     train_tasks.update(additionl_tasks)
 
     return loop.loop(

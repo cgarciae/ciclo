@@ -179,6 +179,11 @@ if importlib.util.find_spec("tensorflow") is not None:
             self(loop_state.elapsed, loop_state.state, loop_state.accumulated_logs)
             return {}, loop_state.state
 
+        def on_epoch_end(
+            self, state, batch, elapsed, loop_state: LoopState[S]
+        ) -> CallbackOutput[S]:
+            return self.__loop_callback__(loop_state)
+
 else:
     checkpoint = unavailable_dependency(
         "'tensorflow' package is not available, please install it to use the 'checkpoint' callback"
@@ -451,6 +456,9 @@ class keras_bar(LoopCallbackBase[S]):
     def __loop_callback__(self, loop_state: LoopState[S]) -> CallbackOutput[S]:
         self(loop_state.elapsed, loop_state.logs)
         return {}, loop_state.state
+
+    def on_train_batch_end(self, state, batch, elapsed, loop_state: LoopState[S]):
+        return self.__loop_callback__(loop_state)
 
 
 if importlib.util.find_spec("wandb") is not None:
