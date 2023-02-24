@@ -1,4 +1,5 @@
 # %%
+from pathlib import Path
 from time import time
 
 import flax.linen as nn
@@ -89,7 +90,7 @@ state = TrainState.create(
 )
 
 # training loop
-total_samples = 32 * 10000
+total_samples = 32 * 100
 total_steps = total_samples // batch_size
 eval_steps = total_steps // 10
 log_steps = total_steps // 50
@@ -98,16 +99,16 @@ log_steps = total_steps // 50
 state, history, _ = ciclo.train_loop(
     state,
     ds_train.as_numpy_iterator(),
-    {
-        ciclo.on_epoch_end: [
-            ciclo.checkpoint(
-                f"logdir/mnist_fit/{int(time())}", monitor="accuracy_test", mode="max"
-            )
-        ],
-        ciclo.every(1): ciclo.keras_bar(total=total_steps),
-    },
+    callbacks=[
+        ciclo.checkpoint(
+            f"logdir/{Path(__file__).stem}/{int(time())}",
+            monitor="accuracy_test",
+            mode="max",
+        ),
+        ciclo.keras_bar(total=total_steps),
+    ],
     test_dataset=lambda: ds_test.as_numpy_iterator(),
-    test_every=eval_steps,
+    epoch_duration=eval_steps,
     stop=total_steps,
 )
 

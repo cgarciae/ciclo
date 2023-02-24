@@ -1,4 +1,5 @@
 from curses import keyname
+from pathlib import Path
 from time import time
 
 import flax.linen as nn
@@ -50,10 +51,10 @@ def loss_fn(state: ManagedState, batch):
     ).mean()
     logs = ciclo.logs()
     logs.add_loss("loss", loss)
-    logs.add_metric(
+    logs.add_stateful_metric(
         "accuracy", Accuracy.from_model_output(logits=logits, labels=labels)
     )
-    logs.add_metric("loss", AverageLoss.from_model_output(loss=loss))
+    logs.add_stateful_metric("loss", AverageLoss.from_model_output(loss=loss))
     return logs, state
 
 
@@ -102,7 +103,7 @@ state, history, *_ = ciclo.loop(
                 ),
             ),
             ciclo.checkpoint(
-                f"logdir/mnist_full_managed/{int(time())}",
+                f"logdir/{Path(__file__).stem}/{int(time())}",
                 monitor="accuracy_valid",
                 mode="max",
                 keep=3,

@@ -17,7 +17,7 @@ from flax.training import train_state
 import ciclo
 
 batch_size = 32
-total_samples = 32 * 10000
+total_samples = 32 * 100
 total_steps = total_samples // batch_size
 eval_steps = total_steps // 10
 log_steps = total_steps // 50

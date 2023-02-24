@@ -1,4 +1,5 @@
 # %%
+from pathlib import Path
 from time import time
 
 import flax.linen as nn
@@ -72,7 +73,7 @@ state, history, _ = ciclo.loop(
     {
         ciclo.every(1): train_step,
         ciclo.every(total_steps // 10): ciclo.checkpoint(
-            f"logdir/mnist_simple/{int(time())}"
+            f"logdir/{Path(__file__).stem}/{int(time())}",
         ),
         **ciclo.keras_bar(total=total_steps),
     },

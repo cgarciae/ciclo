@@ -1,4 +1,5 @@
 # %%
+from pathlib import Path
 from time import time
 
 import flax.linen as nn
@@ -64,7 +65,9 @@ total_samples = 32 * 100
 total_steps = total_samples // batch_size
 
 checkpoint_schedule = ciclo.every(steps=1000)
-checkpoint = ciclo.checkpoint(f"logdir/mnist_simple/{int(time())}")
+checkpoint = ciclo.checkpoint(
+    f"logdir/{Path(__file__).stem}/{int(time())}",
+)
 keras_bar = ciclo.keras_bar(total=total_steps)
 end_period = ciclo.at(total_steps)
 
