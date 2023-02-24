@@ -19,6 +19,7 @@ batch_size = 32
 ds_train: tf.data.Dataset = tfds.load("mnist", split="train", shuffle_files=True)
 ds_train = ds_train.shuffle(1024).batch(batch_size).repeat().prefetch(1)
 
+
 # Define model
 class Linear(nn.Module):
     @nn.compact

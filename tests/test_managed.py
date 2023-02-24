@@ -35,7 +35,7 @@ class State(managed.ManagedState):
             process=process,
             config=config,
             loss_fn=loss_fn,
-            **kwargs
+            **kwargs,
         )
 
 

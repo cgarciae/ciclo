@@ -23,6 +23,7 @@ ds_train = ds_train.repeat().shuffle(1024).batch(batch_size).prefetch(1)
 ds_valid: tf.data.Dataset = tfds.load("mnist", split="test")
 ds_valid = ds_valid.batch(batch_size, drop_remainder=True).prefetch(1)
 
+
 # Define model
 class Linear(nn.Module):
     @nn.compact

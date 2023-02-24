@@ -45,7 +45,6 @@ class TestLoops:
         assert state["b"] == 5
 
     def test_bug(self):
-
         state = None
         N = 0
 

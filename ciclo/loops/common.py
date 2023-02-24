@@ -56,7 +56,7 @@ def train_loop(
     *,
     callbacks: Optional[List[FitCallback]] = None,
     test_dataset: Optional[Callable[[], Iterable[B]]] = None,
-    test_every: Optional[PeriodLike] = None,
+    epoch_duration: Optional[PeriodLike] = None,
     test_duration: Optional[PeriodLike] = None,
     test_name: str = "test",
     stop: Optional[PeriodLike] = None,
@@ -68,8 +68,8 @@ def train_loop(
     if tasks is None:
         tasks = {}
 
-    if isinstance(test_every, int):
-        test_every = Period.create(steps=test_every)
+    if isinstance(epoch_duration, int):
+        epoch_duration = Period.create(steps=epoch_duration)
 
     if isinstance(test_duration, int):
         test_duration = Period.create(steps=test_duration)
@@ -120,7 +120,7 @@ def train_loop(
         *named_tasks.get(TRAIN_STEP, []),
     ]
 
-    if test_every is not None:
+    if epoch_duration is not None:
         test_tasks = []
         test_tasks += named_tasks.pop(RESET_STEP, [])
         if test_dataset is not None:
@@ -138,9 +138,9 @@ def train_loop(
         test_tasks += named_tasks.pop(ON_EPOCH_END, [])
 
         eval_schedule = schedules.every(
-            steps=test_every.steps,
-            samples=test_every.samples,
-            time=test_every.time,
+            steps=epoch_duration.steps,
+            samples=epoch_duration.samples,
+            time=epoch_duration.time,
         )
 
         train_tasks[eval_schedule] = test_tasks

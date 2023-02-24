@@ -15,6 +15,7 @@ batch_size = strategy.lift_batch_size(32)
 ds_train: tf.data.Dataset = tfds.load("mnist", split="train", shuffle_files=True)
 ds_train = ds_train.repeat().shuffle(1024).batch(batch_size).prefetch(1)
 
+
 # Model
 class Linear(nn.Module):
     @nn.compact
@@ -34,6 +35,7 @@ state = managed.ManagedState.create(
     tx=optax.adamw(1e-3),
     strategy=strategy,
 )
+
 
 # Train step
 @managed.train_step

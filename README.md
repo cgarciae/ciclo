@@ -3,15 +3,15 @@
 # Ciclo
 _Training loop utilities and abstractions for JAX_
 
-`ciclo` is a functional library for training loops in JAX. It provides a set of utilities and abstractions to build complex training loops with any JAX framework. `ciclo` defines a set of building blocks that naturally compose together so they can scale up to build higher-level abstractions.
+`ciclo` is a functional training loops library for JAX. It provides a set of utilities and abstractions to build complex training loops with any JAX framework. `ciclo` defines a set of building blocks that naturally compose together and scale up to build higher-level abstractions.
 
 **Features**
 
 ✔️ Training utilities <br>
 ✔️ Loop language <br>
 🧪 [experimental] Managed API (simplified training + parallelism) <br>
-💡 [idea] Framework support (predifined states + steps) <br>
-💡 [idea] Predefined Loops (e.g. `fit`, `evaluate`, `predict`) <br>
+🧪 [experimental] Predefined Loops (e.g. `train_loop`, `test_loop`, `predict_loop`) <br>
+🧪 [experimental] Framework support (predifined states + steps) <br>
 
 <details><summary><b>Why Ciclo?</b></summary>
 
@@ -44,7 +44,8 @@ Ciclo is still in early development, the API is subject to change, expect things
 * Schedules
 * Callbacks
 * Loops
-* Parallelism [experimental]
+* Parallelism (managed API)
+* Predefined States (framework support)
 
 ## Quick Start
 The `loop` function serves as a mini-language for defining training loops as a composition of functions. The tasks dictionary lets you express the desired behavior of the loop as a composition of schedules and callbacks.
@@ -52,17 +53,19 @@ The `loop` function serves as a mini-language for defining training loops as a c
 ```python
 @jax.jit
 def train_step(state, batch):
-    ... # update model state and create logs
+    ... # update state
+    logs = ciclo.logs()
+    ... # add logs
     return logs, state
 
 total_steps = 10_000
 state = create_state() # initial state
 
 state, history, elapsed = ciclo.loop(
-    state, # state: Pytree
-    dataset, # dataset: Iterable[Batch]
+    state, # Pytree
+    dataset, # Iterable[Batch]
+    # Dict[Schedule, List[Callback]]
     {
-        # Dict[Schedule, List[Callback]]
         ciclo.every(1): [train_step],
         ciclo.every(steps=1000): [ciclo.checkpoint(f"logdir/model")],
         ciclo.every(1): [ciclo.keras_bar(total=total_steps)],
@@ -71,18 +74,48 @@ state, history, elapsed = ciclo.loop(
 )
 ```
 
-You can also use Ciclo's utilities to build your own training loop when you need more control. 
+### train_loop
+
+If you need a more traditional (Keras-like) training loop, you can use `train_loop` will take care of some of the boilerplate for you without loosing any flexibility. 
 
 ```python
-total_steps = 5_000
-state = create_state() # initial state
+@jax.jit
+def test_step(state, batch):
+    ... # update state
+    logs = ciclo.logs()
+    ... # add logs
+    return logs, state
 
+state, history, elapsed = ciclo.train_loop(
+    state, # 
+    train_dataset, # Iterable[Batch]
+    # Dict[Schedule, List[Callback]]
+    {
+        ciclo.train_step: [train_step], # named schedules
+        ciclo.test_step: [test_step], # named schedules
+        ciclo.every(20): [some_callback], # regular schedules also supported
+    },
+    test_dataset=lambda: make_test_dataset(), # lazy test dataset definition
+    epoch_duration=steps_per_epoch,
+    callbacks=[
+        # callback self-registration
+        ciclo.keras_bar(total=total_steps), # runs on ciclo.on_train_batch_end
+        ciclo.checkpoint(f"logdir/model"),  # runs on ciclo.on_epoch_end
+    ],
+    stop=total_steps,
+)
+```
+
+### Manual Iteration
+Each of Ciclo's utilities provide simple APIs so you can use them standalone if you want to build your own training loop.
+
+```python
 call_checkpoint = ciclo.every(steps=1000) # Schedule
 checkpoint = ciclo.checkpoint(f"logdir/model") # Callback
 keras_bar = ciclo.keras_bar(total=total_steps) # Callback
 history = ciclo.history() # History
 # (Elapsed, Batch)
-for elapsed, batch in ciclo.elapse(ds_train.as_numpy_iterator(), stop=total_steps):
+for elapsed, batch in ciclo.elapse(train_dataset, stop=total_steps):
     logs = ciclo.logs() # Logs
     # update logs and state
     logs.updates, state = train_step(state, batch)

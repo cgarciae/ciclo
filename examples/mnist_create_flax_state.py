@@ -78,7 +78,7 @@ state, history, _ = ciclo.train_loop(
         ),
     ],
     test_dataset=lambda: ds_test.as_numpy_iterator(),
-    test_every=eval_steps,
+    epoch_duration=eval_steps,
     stop=total_steps,
 )
 
