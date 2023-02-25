@@ -1,4 +1,4 @@
-from typing import Any, Callable, Dict, Iterable, List, Optional, Union
+from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Union
 
 from ciclo import callbacks as callbacks_lib
 from ciclo import schedules
@@ -64,6 +64,7 @@ def train_loop(
     elapsed: Optional[Elapsed] = None,
     catch_keyboard_interrupt: bool = True,
     metadata: Optional[Any] = None,
+    batch_size_fn: Optional[Callable[[List[Tuple[int, ...]]], int]] = None,
 ) -> LoopOutput[S]:
     if tasks is None:
         tasks = {}
@@ -132,6 +133,7 @@ def train_loop(
                         test_dataset(),
                         tasks=named_tasks_test,
                         stop=test_duration,
+                        batch_size_fn=batch_size_fn,
                     ),
                 )
             )
@@ -162,6 +164,7 @@ def train_loop(
         elapsed=elapsed,
         catch_keyboard_interrupt=catch_keyboard_interrupt,
         metadata=metadata,
+        batch_size_fn=batch_size_fn,
     )
 
 
@@ -176,6 +179,7 @@ def test_loop(
     elapsed: Optional[Elapsed] = None,
     catch_keyboard_interrupt: bool = True,
     metadata: Optional[Any] = None,
+    batch_size_fn: Optional[Callable[[List[Tuple[int, ...]]], int]] = None,
 ) -> LoopOutput[S]:
     if tasks is None:
         tasks = {}
@@ -232,6 +236,7 @@ def test_loop(
         elapsed=elapsed,
         catch_keyboard_interrupt=catch_keyboard_interrupt,
         metadata=metadata,
+        batch_size_fn=batch_size_fn,
     )
 
 
@@ -246,6 +251,7 @@ def predict_loop(
     elapsed: Optional[Elapsed] = None,
     catch_keyboard_interrupt: bool = True,
     metadata: Optional[Any] = None,
+    batch_size_fn: Optional[Callable[[List[Tuple[int, ...]]], int]] = None,
 ) -> LoopOutput[S]:
     if tasks is None:
         tasks = {}
@@ -302,4 +308,5 @@ def predict_loop(
         elapsed=elapsed,
         catch_keyboard_interrupt=catch_keyboard_interrupt,
         metadata=metadata,
+        batch_size_fn=batch_size_fn,
     )

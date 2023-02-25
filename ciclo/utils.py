@@ -49,19 +49,27 @@ def callback(f) -> LoopFunctionCallback:
     return LoopFunctionCallback(f)
 
 
-def get_batch_size(batch: Batch) -> int:
-    def get_size(sizes, x):
-        shape = np.shape(x)
+def get_batch_size(
+    batch: Batch, batch_size_fn: Callable[[List[Tuple[int, ...]]], int]
+) -> int:
+    def get_shape(x) -> Tuple[int, ...]:
+        if not hasattr(x, "shape"):
+            return (1,)
+        shape = x.shape
         if len(shape) == 0:
-            sizes.add(1)
-        else:
-            sizes.add(shape[0])
-        return sizes
+            shape = (1,)
+        return shape
 
-    sizes = jax.tree_util.tree_reduce(get_size, batch, set())
-    if len(sizes) != 1:
-        raise ValueError("Batch size must be the same for all elements in the batch.")
-    return sizes.pop()
+    shapes = [get_shape(x) for x in jax.tree_util.tree_leaves(batch)]
+
+    if len(shapes) == 0:
+        return 1
+
+    return batch_size_fn(shapes)
+
+
+def max_first_axis(shapes: List[Tuple[int, ...]]) -> int:
+    return max(s[0] for s in shapes)
 
 
 def inject(f: Callable[..., A]) -> Callable[..., A]:

@@ -1,6 +1,6 @@
 import dataclasses
 from datetime import datetime, timedelta
-from typing import Any, Callable, Iterable, Mapping, Optional, Tuple, Union
+from typing import Any, Callable, Iterable, List, Mapping, Optional, Tuple, Union
 
 from flax import struct
 
@@ -132,8 +132,12 @@ def elapse(
     dataset: Iterable[B],
     initial: Optional[Elapsed] = None,
     stop: Optional[PeriodLike] = None,
+    batch_size_fn: Optional[Callable[[List[Tuple[int, ...]]], int]] = None,
 ) -> Iterable[Tuple[Elapsed, B]]:
-    from ciclo.utils import get_batch_size
+    from ciclo.utils import get_batch_size, max_first_axis
+
+    if batch_size_fn is None:
+        batch_size_fn = max_first_axis
 
     if stop is not None:
         stop = to_period(stop)
@@ -141,7 +145,7 @@ def elapse(
     elapsed = initial or Elapsed.create()
     for batch in dataset:
         yield elapsed, batch
-        batch_size = get_batch_size(batch)
+        batch_size = get_batch_size(batch, batch_size_fn=batch_size_fn)
         elapsed = elapsed.update(batch_size)
 
         if stop and elapsed >= stop:

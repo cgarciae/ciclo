@@ -132,6 +132,7 @@ def loop(
     history: Optional[History] = None,
     elapsed: Optional[Elapsed] = None,
     catch_keyboard_interrupt: bool = True,
+    batch_size_fn: Optional[Callable[[List[Tuple[int, ...]]], int]] = None,
     metadata: Optional[Any] = None,
 ) -> LoopOutput[S]:
     if history is None:
@@ -172,7 +173,7 @@ def loop(
 
     try:
         for i, (elapsed, batch) in enumerate(
-            elapse(dataset, initial=elapsed, stop=stop)
+            elapse(dataset, initial=elapsed, stop=stop, batch_size_fn=batch_size_fn)
         ):
             loop_state.elapsed = elapsed
             loop_state.batch = batch

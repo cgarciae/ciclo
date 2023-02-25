@@ -1,9 +1,9 @@
 [![codecov](https://codecov.io/gh/cgarciae/ciclo/branch/main/graph/badge.svg?token=3IKEUAU3C8)](https://codecov.io/gh/cgarciae/ciclo)
 
 # Ciclo
-_Training loop utilities and abstractions for JAX_
+_A functional training loops library for JAX_
 
-`ciclo` is a functional training loops library for JAX. It provides a set of utilities and abstractions to build complex training loops with any JAX framework. `ciclo` defines a set of building blocks that naturally compose together and scale up to build higher-level abstractions.
+`ciclo` provides a set of utilities and abstractions to build complex training loops with any JAX framework. `ciclo` defines a set of building blocks that naturally compose together and scale up to build higher-level abstractions.
 
 **Features**
 
