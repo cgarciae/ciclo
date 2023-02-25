@@ -53,9 +53,10 @@ The `loop` function serves as a mini-language for defining training loops as a c
 ```python
 @jax.jit
 def train_step(state, batch):
-    ... # update state
+    ... # do JAX stuff to update state
     logs = ciclo.logs()
-    ... # add logs
+    logs.add_metric("accuracy", accuracy)
+    logs.add_metric("loss", loss)
     return logs, state
 
 total_steps = 10_000
@@ -64,13 +65,12 @@ state = create_state() # initial state
 state, history, elapsed = ciclo.loop(
     state, # Pytree
     dataset, # Iterable[Batch]
-    # Dict[Schedule, List[Callback]]
-    {
+    { # Schedule: List[Callback]
         ciclo.every(1): [train_step],
         ciclo.every(steps=1000): [ciclo.checkpoint(f"logdir/model")],
         ciclo.every(1): [ciclo.keras_bar(total=total_steps)],
     },
-    stop=total_steps, # stop: Optional[int | Period]
+    stop=total_steps,
 )
 ```
 
@@ -81,21 +81,21 @@ If you need a more traditional (Keras-like) training loop, you can use `train_lo
 ```python
 @jax.jit
 def test_step(state, batch):
-    ... # update state
+    ... # do JAX stuff
     logs = ciclo.logs()
-    ... # add logs
+    logs.add_metric("accuracy", accuracy)
+    logs.add_metric("loss", loss)
     return logs, state
 
 state, history, elapsed = ciclo.train_loop(
-    state, # 
+    state, # Pytree
     train_dataset, # Iterable[Batch]
-    # Dict[Schedule, List[Callback]]
-    {
+    { # Schedule: List[Callback]
         ciclo.train_step: [train_step], # named schedules
         ciclo.test_step: [test_step], # named schedules
         ciclo.every(20): [some_callback], # regular schedules also supported
     },
-    test_dataset=lambda: make_test_dataset(), # lazy test dataset definition
+    test_dataset=lambda: get_test_dataset(), # lazy test dataset definition
     epoch_duration=steps_per_epoch,
     callbacks=[
         # callback self-registration
@@ -126,3 +126,12 @@ for elapsed, batch in ciclo.elapse(train_dataset, stop=total_steps):
     keras_bar(elapsed, logs) # update progress bar
     history.commit(elapsed, logs) # commit logs to history
 ```
+## Examples
+Check out the [examples](./examples) section for a more hands-on experience:
+
+* [00 Linear Regression](examples/00_linear_regression_pure_jax.py) (pure jax)
+* [01 Simple MNIST](examples/01_mnist_simple.py)
+* [02 Using train_loop](examples/02_mnist_train_loop.py)
+* [03 Manual Iteration](examples/03_mnist_manual_iteration.py)
+* [04 Managed API](examples/04_mnist_managed_api.py)
+* [05 Using create_flax_state](examples/05_mnist_flax_state.py)

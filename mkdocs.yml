@@ -3,6 +3,7 @@ site_name: Ciclo
 nav:
 - Overview: index.md
 - Getting Started: getting_started.md
+- User Guide: user_guide.md
 
 theme:
   name: material
