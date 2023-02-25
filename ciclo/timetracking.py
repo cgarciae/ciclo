@@ -1,26 +1,26 @@
 import dataclasses
 from datetime import datetime, timedelta
-from typing import Any, Callable, Iterable, List, Mapping, Optional, Tuple, Union
+from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, Tuple, Union
 
 from flax import struct
 
 from ciclo.types import B
 
 
-class Elapsed(struct.PyTreeNode, Mapping[str, Any]):
+class Elapsed(struct.PyTreeNode):
     steps: int
     samples: int
     date: float
-    _date_start: float = struct.field(pytree_node=True, repr=False)
+    date_start: float = struct.field(pytree_node=True, repr=False)
 
     @property
     def time(self) -> float:
-        return self.date - self._date_start
+        return self.date - self.date_start
 
     @classmethod
     def create(cls, steps: int = 0, samples: int = 0) -> "Elapsed":
         now = datetime.now().timestamp()
-        return cls(steps=steps, samples=samples, _date_start=now, date=now)
+        return cls(steps=steps, samples=samples, date_start=now, date=now)
 
     def update(self, batch_size: int) -> "Elapsed":
         return self.replace(
@@ -32,12 +32,21 @@ class Elapsed(struct.PyTreeNode, Mapping[str, Any]):
     def update_time(self) -> "Elapsed":
         return self.replace(date=datetime.now().timestamp())
 
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "steps": self.steps,
+            "samples": self.samples,
+            "date": self.date,
+            "date_start": self.date_start,
+            "time": self.time,
+        }
+
     def __sub__(self, other: "Elapsed") -> "Elapsed":
         return Elapsed(
             steps=self.steps - other.steps,
             samples=self.samples - other.samples,
             date=self.date,
-            _date_start=other._date_start,
+            date_start=other.date_start,
         )
 
     def _compare(
@@ -70,21 +79,6 @@ class Elapsed(struct.PyTreeNode, Mapping[str, Any]):
 
     def __ne__(self, other: "Period") -> bool:
         return self._compare(other, lambda a, b: a != b)
-
-    # Mapping
-    def __iter__(self) -> Iterable[str]:
-        return self.__dict__.keys()
-
-    def __getitem__(self, key: str) -> Any:
-        if hasattr(self, key):
-            return getattr(self, key)
-        raise KeyError(key)
-
-    def __contains__(self, key: str) -> bool:
-        return hasattr(self, key)
-
-    def __len__(self) -> int:
-        return len(self.__dict__)
 
 
 @dataclasses.dataclass(frozen=True)

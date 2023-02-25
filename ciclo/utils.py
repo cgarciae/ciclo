@@ -5,10 +5,10 @@ from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, TypeVar
 import jax
 import numpy as np
 
-from ciclo.logging import Elapsed, History, Logs
+from ciclo.logging import History, Logs
 from ciclo.loops.loop import LoopFunctionCallback
 from ciclo.timetracking import Period
-from ciclo.types import A, B, Batch, LogsLike
+from ciclo.types import A, B, Batch
 
 F = TypeVar("F", bound=Callable[..., Any])
 
@@ -17,13 +17,11 @@ def logs(*args, **kwargs: Dict[str, Any]) -> Logs:
     return Logs(*args, **kwargs)
 
 
-def history(logs_list: Optional[List[LogsLike]] = None) -> History:
+def history(logs_list: Optional[List[Logs]] = None) -> History:
     if logs_list is None:
         return History()
 
-    return History(
-        Logs(logs) if not isinstance(logs, Logs) else logs for logs in logs_list
-    )
+    return History(logs_list)
 
 
 def at(

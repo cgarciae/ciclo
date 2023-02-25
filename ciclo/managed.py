@@ -16,6 +16,7 @@ from flax import struct
 from flax.training import train_state
 from typing_extensions import Protocol, runtime_checkable
 
+from ciclo.logging import Logs
 from ciclo.loops.loop import (
     CallbackOutput,
     FunctionCallbackOutputs,
@@ -24,7 +25,7 @@ from ciclo.loops.loop import (
     to_standard_outputs,
 )
 from ciclo.strategies import Strategy, get_strategy
-from ciclo.types import Batch, Broadcasts, CluMetric, LogsLike, MetricLike, Statics
+from ciclo.types import Batch, Broadcasts, CluMetric, MetricLike, Statics
 from ciclo.utils import inject
 
 Loss = jax.Array
@@ -218,7 +219,7 @@ class ManagedTrainStep(ManagedStep[S]):
 
                 return loss, (logs, _state)
 
-            logs: LogsLike
+            logs: Logs
             (_, (logs, state)), grads = jax.value_and_grad(loss_fn, has_aux=True)(
                 state.params
             )

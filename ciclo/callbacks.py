@@ -19,7 +19,7 @@ from ciclo.loops.loop import (
 )
 from ciclo.schedules import every
 from ciclo.timetracking import Elapsed, Period
-from ciclo.types import Batch, LogsLike, S
+from ciclo.types import Batch, S
 from ciclo.utils import get_batch_size, is_scalar
 
 
@@ -76,18 +76,19 @@ class inner_loop(LoopCallbackBase[S]):
             self.loop_fn = name_or_loop_fn
         self.output_state = output_state
 
-    def __call__(self, state: S) -> Tuple[LogsLike, S]:
+    def __call__(self, state: S) -> Tuple[Logs, S]:
         inner_state, log_history, _ = self.loop_fn(state)
-        logs: LogsLike = log_history[-1] if len(log_history) > 0 else {}
-        logs = {
-            collection: {
-                k + f"_{self.name}" if self.name else k: v
-                for k, v in values.items()
-                if not isinstance(v, Elapsed)
+        logs = log_history[-1] if len(log_history) > 0 else Logs()
+        logs = Logs(
+            {
+                collection: {
+                    k + f"_{self.name}" if self.name else k: v
+                    for k, v in values.items()
+                }
+                for collection, values in logs.items()
+                if collection != "elapsed"
             }
-            for collection, values in logs.items()
-            if collection != "elapsed"
-        }
+        )
         return logs, (inner_state if self.output_state else state)
 
     def __loop_callback__(self, loop_state: LoopState[S]) -> CallbackOutput[S]:
@@ -130,7 +131,7 @@ if importlib.util.find_spec("tensorflow") is not None:
             self._best: Optional[float] = None
 
         def __call__(
-            self, elapsed: Elapsed, state: S, logs: Optional[LogsLike] = None
+            self, elapsed: Elapsed, state: S, logs: Optional[Logs] = None
         ) -> None:
             save_checkpoint = True
             step_or_metric = elapsed.steps
@@ -177,7 +178,7 @@ if importlib.util.find_spec("tensorflow") is not None:
 
         def __loop_callback__(self, loop_state: LoopState[S]) -> CallbackOutput[S]:
             self(loop_state.elapsed, loop_state.state, loop_state.accumulated_logs)
-            return {}, loop_state.state
+            return Logs(), loop_state.state
 
         def on_epoch_end(
             self, state, batch, elapsed, loop_state: LoopState[S]
@@ -223,7 +224,7 @@ class early_stopping(LoopCallbackBase[S]):
         self._best_state = None
         self._elapsed_start: Optional[Elapsed] = None
 
-    def __call__(self, elapsed: Elapsed, state: S, logs: LogsLike) -> Tuple[bool, S]:
+    def __call__(self, elapsed: Elapsed, state: S, logs: Logs) -> Tuple[bool, S]:
         stop_iteration = False
 
         if self._elapsed_start is None:
@@ -258,7 +259,7 @@ class early_stopping(LoopCallbackBase[S]):
             loop_state.elapsed, loop_state.state, loop_state.accumulated_logs
         )
         loop_state.stop_iteration = stop_iteration
-        return {}, state
+        return Logs(), state
 
 
 class tqdm_bar(LoopCallbackBase[S]):
@@ -364,7 +365,7 @@ class tqdm_bar(LoopCallbackBase[S]):
             self.prev_samples = elapsed.samples
         elif self.total.time is not None:
             if self.prev_time is None:
-                self.prev_time = elapsed._date_start
+                self.prev_time = elapsed.date_start
             self.bar.update(elapsed.date - self.prev_time)
             self.prev_time = elapsed.date
         else:
@@ -428,7 +429,7 @@ class keras_bar(LoopCallbackBase[S]):
             unit_name=unit_name,
         )
 
-    def __call__(self, elapsed: Elapsed, logs: LogsLike) -> None:
+    def __call__(self, elapsed: Elapsed, logs: Logs) -> None:
         if self.total is None or self.total.steps is not None:
             current = elapsed.steps
         elif self.total.samples is not None:
@@ -455,7 +456,7 @@ class keras_bar(LoopCallbackBase[S]):
 
     def __loop_callback__(self, loop_state: LoopState[S]) -> CallbackOutput[S]:
         self(loop_state.elapsed, loop_state.logs)
-        return {}, loop_state.state
+        return Logs(), loop_state.state
 
     def on_train_batch_end(self, state, batch, elapsed, loop_state: LoopState[S]):
         return self.__loop_callback__(loop_state)
@@ -470,7 +471,7 @@ if importlib.util.find_spec("wandb") is not None:
 
             self.run: Run = run
 
-        def __call__(self, elapsed: Elapsed, logs: LogsLike) -> None:
+        def __call__(self, elapsed: Elapsed, logs: Logs) -> None:
             data = {}
             for collection, collection_logs in logs.items():
                 for key, value in collection_logs.items():
@@ -484,7 +485,7 @@ if importlib.util.find_spec("wandb") is not None:
 
         def __loop_callback__(self, loop_state: LoopState[S]) -> CallbackOutput[S]:
             self(loop_state.elapsed, loop_state.logs)
-            return {}, loop_state.state
+            return Logs(), loop_state.state
 
 else:
     wandb_logger = unavailable_dependency(
@@ -494,7 +495,7 @@ else:
 
 class NoOp(LoopCallbackBase[S]):
     def __loop_callback__(self, loop_state: LoopState[S]) -> CallbackOutput[S]:
-        return {}, loop_state.state
+        return Logs(), loop_state.state
 
 
 noop = NoOp()
@@ -512,7 +513,7 @@ if importlib.util.find_spec("clu") is not None:
 
         def __loop_callback__(self, loop_state: LoopState[S]) -> CallbackOutput[S]:
             self.action(loop_state.elapsed.steps, t=loop_state.elapsed.date)
-            return {}, loop_state.state
+            return Logs(), loop_state.state
 
     @functools.partial(register_adapter, cls=PeriodicAction)
     def periodic_action_adapter(f: PeriodicAction):

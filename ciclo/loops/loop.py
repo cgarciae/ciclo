@@ -19,10 +19,10 @@ from typing_extensions import Protocol, runtime_checkable
 import ciclo
 from ciclo.logging import History, Logs
 from ciclo.schedules import ScheduleLike, to_schedule
-from ciclo.timetracking import Elapsed, Period, PeriodLike, elapse, to_period
-from ciclo.types import A, B, Batch, Broadcasts, LogsLike, S, Schedule, Statics
+from ciclo.timetracking import Elapsed, PeriodLike, elapse
+from ciclo.types import A, B, Batch, Broadcasts, S, Schedule, Statics
 
-CallbackOutput = Tuple[LogsLike, S]
+CallbackOutput = Tuple[Logs, S]
 
 
 @dataclass
@@ -61,9 +61,7 @@ LoopCallbackLike = Any
 InputTasks = Dict[ScheduleLike, Union[LoopCallbackLike, List[LoopCallbackLike]]]
 ScheduleCallback = Dict[Schedule, List[LoopCallback[S]]]
 CallbackAdapter = Callable[[Any], LoopCallback[S]]
-FunctionCallbackOutputs = Union[
-    Tuple[Optional[LogsLike], Optional[S]], LogsLike, S, None
-]
+FunctionCallbackOutputs = Union[Tuple[Optional[Logs], Optional[S]], Logs, S, None]
 GeneralCallback = Callable[[S, Batch, Broadcasts, Statics], FunctionCallbackOutputs[S]]
 LoopOutput = Tuple[S, History, Elapsed]
 
@@ -71,24 +69,23 @@ LoopOutput = Tuple[S, History, Elapsed]
 def to_standard_outputs(
     outputs: FunctionCallbackOutputs[S], current_state: S
 ) -> CallbackOutput[S]:
-    logs: LogsLike
+    logs: Logs
     state: S
     if outputs is None:
-        logs = {}
+        logs = Logs()
         state = current_state
-
     elif type(outputs) is tuple:
         if len(outputs) != 2:
             raise ValueError(
                 f"Invalid output from callback function: {outputs}, must be a tuple of length 2"
             )
-        logs = outputs[0] or {}
+        logs = outputs[0] or Logs()
         state = outputs[1] or current_state
-    elif isinstance(outputs, Dict):
+    elif isinstance(outputs, Logs):
         logs = outputs
         state = current_state
     else:
-        logs = {}
+        logs = Logs()
         state = outputs
 
     return logs, state

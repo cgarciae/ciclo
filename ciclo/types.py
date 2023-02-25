@@ -23,7 +23,6 @@ Batch = Any
 Broadcasts = Any
 Statics = Any
 LogPath = Tuple[str, str]
-LogsLike = Dict[str, Mapping[str, Any]]
 A = TypeVar("A")
 S = TypeVar("S", bound=State)
 B = TypeVar("B", bound=Batch)

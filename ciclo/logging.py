@@ -16,16 +16,17 @@ import numpy as np
 from jax.tree_util import register_pytree_node
 
 from ciclo.timetracking import Elapsed
-from ciclo.types import CluMetric, LogPath, LogsLike
+from ciclo.types import CluMetric, LogPath
+
+LogsLike = Dict[str, Dict[str, Any]]
 
 
 class Logs(LogsLike):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # copy mutable values
+        # copy values
         for k, v in self.items():
-            if isinstance(v, MutableMapping):
-                self[k] = dict(v)
+            self[k] = dict(v)
 
     @property
     def updates(self) -> Optional[LogsLike]:
@@ -138,33 +139,10 @@ class Logs(LogsLike):
 
     def merge(self, collection_updates: LogsLike):
         for collection, updates in collection_updates.items():
-            if not isinstance(updates, Mapping):
-                raise ValueError(
-                    f"Invalide value '{updates}' for collection '{collection}', value must be a Mapping"
-                )
             if collection in self:
-                entries = self[collection]
-                if isinstance(entries, MutableMapping):
-                    entries.update(updates)
-                elif isinstance(entries, Mapping):
-                    if type(entries) != type(updates):
-                        raise ValueError(
-                            f"Cannot merge collections of different types: {type(entries)} and {type(updates)}"
-                        )
-                    self[collection] = updates
-                else:
-                    raise ValueError(
-                        f"Invalid collection '{collection}' of type '{type(entries).__name__}', must be a Mapping "
-                        "or MutableMapping"
-                    )
+                self[collection].update(updates)
             else:
-                # NOTE: we copy mutable mappings to avoid side effects
-                if isinstance(updates, Dict):
-                    self[collection] = updates.copy()
-                elif isinstance(updates, MutableMapping):
-                    self[collection] = dict(updates)
-                else:
-                    self[collection] = updates
+                self[collection] = dict(updates)  # create copy
 
 
 def _logs_tree_flatten(self):
@@ -207,14 +185,14 @@ class History(List[Logs]):
 
         return outputs if len(keys) > 1 else outputs[0]
 
-    def commit(self, elapsed: Elapsed, logs: LogsLike):
+    def commit(self, elapsed: Elapsed, logs: Logs):
         # convert JAX arrays to numpy arrays to free memory
         logs = jax.tree_map(
             lambda x: np.asarray(x) if isinstance(x, jnp.ndarray) else x, logs
         )
         if not isinstance(logs, Logs):
             logs = Logs(logs)
-        logs["elapsed"] = elapsed
+        logs["elapsed"] = elapsed.to_dict()
         self.append(logs)
 
 

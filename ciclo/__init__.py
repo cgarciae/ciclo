@@ -1,8 +1,6 @@
 __version__ = "0.1.0"
 
 
-from ciclo.types import LogsLike
-
 from . import managed
 from .callbacks import checkpoint as checkpoint
 from .callbacks import early_stopping as early_stopping
