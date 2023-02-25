@@ -59,7 +59,7 @@ def train_step(state, batch):
     logs.add_metric("loss", loss)
     return logs, state
 
-total_steps = 10_000
+total_steps = 100
 state = create_state() # initial state
 
 state, history, elapsed = ciclo.loop(
@@ -67,16 +67,20 @@ state, history, elapsed = ciclo.loop(
     dataset, # Iterable[Batch]
     { # Schedule: List[Callback]
         ciclo.every(1): [train_step],
-        ciclo.every(steps=1000): [ciclo.checkpoint(f"logdir/model")],
+        ciclo.every(steps=10): [ciclo.checkpoint(f"logdir/model")],
         ciclo.every(1): [ciclo.keras_bar(total=total_steps)],
     },
     stop=total_steps,
 )
 ```
+```
+80/100 [=====================>.....] - ETA: 42s - accuracy: 0.6148 - loss: 1.537120
+```
+`loop` is a very thin abstraction, schedules will be checked in order and callbacks will be called in the order they are defined given that the schedule's condition is met. This means you have to be aware of the order in which you define your schedules and callbacks, e.g. `keras_bar` should always be at then end to get the accumulated logs from all the callbacks.
 
 ### train_loop
 
-If you need a more traditional (Keras-like) training loop, you can use `train_loop` will take care of some of the boilerplate for you without loosing any flexibility. 
+If you need a more traditional (Keras-like) training loop you can use `train_loop` to remove some of the boilerplate. `train_loop` is a super-set of `loop` that adds support for some special named schedules (e.g. `ciclo.train_step`), it can do anything `loop` can do but it can trigger callbacks at specific points in the training loop and automatically handle the inner test loop.
 
 ```python
 @jax.jit
@@ -105,9 +109,18 @@ state, history, elapsed = ciclo.train_loop(
     stop=total_steps,
 )
 ```
+```
+80/100 [=====================>.....] - ETA: 42s - accuracy: 0.6148 - loss: 1.537120
+```
+
+### Managed API
+🚧
+
+### Framework Support
+🚧
 
 ### Manual Iteration
-Each of Ciclo's utilities provide simple APIs so you can use them standalone if you want to build your own training loop.
+Ciclo is more of a set of loosely coupled APIs, you can use all of them independently from `loop` to create your own training procedure when more control is required.
 
 ```python
 call_checkpoint = ciclo.every(steps=1000) # Schedule
