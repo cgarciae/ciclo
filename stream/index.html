@@ -167,6 +167,21 @@
   
 
     
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../user_guide/" class="md-nav__link">
+        User Guide
+      </a>
+    </li>
+  
+
+    
   </ul>
 </nav>
                   </div>
@@ -1570,7 +1585,7 @@ def create_state():
         <span class="n">logits</span><span class="o">=</span><span class="n">logits</span><span class="p">,</span> <span class="n">labels</span><span class="o">=</span><span class="n">labels</span><span class="p">,</span> <span class="n">loss</span><span class="o">=</span><span class="n">loss</span>
     <span class="p">)</span>
     <span class="n">metrics</span> <span class="o">=</span> <span class="n">state</span><span class="o">.</span><span class="n">metrics</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">metric_updates</span><span class="p">)</span>
-    <span class="n">logs</span><span class="o">.</span><span class="n">add_stateful_metrics</span><span class="p">(</span><span class="n">metrics</span><span class="o">.</span><span class="n">compute</span><span class="p">())</span>
+    <span class="n">logs</span><span class="o">.</span><span class="n">add_stateful_metrics</span><span class="p">(</span><span class="o">**</span><span class="n">metrics</span><span class="o">.</span><span class="n">compute</span><span class="p">())</span>
 
     <span class="k">return</span> <span class="n">logs</span><span class="p">,</span> <span class="n">state</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">metrics</span><span class="o">=</span><span class="n">metrics</span><span class="p">)</span>
 
@@ -1614,7 +1629,7 @@ def train_step(state, batch):
         logits=logits, labels=labels, loss=loss
     )
     metrics = state.metrics.merge(metric_updates)
-    logs.add_stateful_metrics(metrics.compute())
+    logs.add_stateful_metrics(**metrics.compute())
 
     return logs, state.replace(metrics=metrics)
 

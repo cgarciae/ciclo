@@ -184,13 +184,6 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#installation" class="md-nav__link">
-    Installation
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#status" class="md-nav__link">
     Status
   </a>
@@ -198,15 +191,56 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#utilities" class="md-nav__link">
-    Utilities
+  <a href="#getting-started" class="md-nav__link">
+    Getting Started
   </a>
+  
+    <nav class="md-nav" aria-label="Getting Started">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#loop-language" class="md-nav__link">
+    🌀 Loop Language
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#predefined-loops" class="md-nav__link">
+    🧪 Predefined Loops
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#managed-api" class="md-nav__link">
+    Managed API 🧪
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#framework-support" class="md-nav__link">
+    Framework Support 🧪
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#manual-iteration" class="md-nav__link">
+    Manual Iteration
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#quick-start" class="md-nav__link">
-    Quick Start
+  <a href="#examples" class="md-nav__link">
+    Examples
   </a>
   
 </li>
@@ -229,6 +263,21 @@
     <li class="md-nav__item">
       <a href="getting_started/" class="md-nav__link">
         Getting Started
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="user_guide/" class="md-nav__link">
+        User Guide
       </a>
     </li>
   
@@ -261,13 +310,6 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#installation" class="md-nav__link">
-    Installation
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#status" class="md-nav__link">
     Status
   </a>
@@ -275,15 +317,56 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#utilities" class="md-nav__link">
-    Utilities
+  <a href="#getting-started" class="md-nav__link">
+    Getting Started
   </a>
+  
+    <nav class="md-nav" aria-label="Getting Started">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#loop-language" class="md-nav__link">
+    🌀 Loop Language
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#predefined-loops" class="md-nav__link">
+    🧪 Predefined Loops
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#managed-api" class="md-nav__link">
+    Managed API 🧪
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#framework-support" class="md-nav__link">
+    Framework Support 🧪
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#manual-iteration" class="md-nav__link">
+    Manual Iteration
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#quick-start" class="md-nav__link">
-    Quick Start
+  <a href="#examples" class="md-nav__link">
+    Examples
   </a>
   
 </li>
@@ -304,76 +387,164 @@
 
 
 <p><a href="https://codecov.io/gh/cgarciae/ciclo"><img alt="codecov" src="https://codecov.io/gh/cgarciae/ciclo/branch/main/graph/badge.svg?token=3IKEUAU3C8" /></a></p>
-<h1 id="ciclo">Ciclo</h1>
-<p><em>Training loop utilities and abstractions for JAX</em></p>
-<p><code>ciclo</code> is a functional library for training loops in JAX. It provides a set of utilities and abstractions to build complex training loops with any JAX framework. <code>ciclo</code> defines a set of building blocks that naturally compose together so they can scale up to build higher-level abstractions.</p>
+<h1 id="ciclo">🌀 Ciclo</h1>
+<p><em>A functional training loops library for JAX</em></p>
+<p><code>ciclo</code> provides a set of utilities and abstractions to build complex training loops with any JAX framework. <code>ciclo</code> defines a set of building blocks that naturally compose together and scale up to build higher-level abstractions.</p>
 <p><strong>Features</strong></p>
 <p>✔️ Training utilities <br>
-✔️ Loop language <br>
-🧪 [experimental] Managed API (simplified training + parallelism) <br>
-💡 [idea] Framework support (predifined states + steps) <br>
-💡 [idea] Predefined Loops (e.g. <code>fit</code>, <code>evaluate</code>, <code>predict</code>) <br></p>
-<details><summary><b>Why Ciclo?</b></summary>
-
-
-- In JAX functions are first-class citizens, instead of monolithic classes like `Model` or `Trainer` in other frameworks, there is a lot of benefit in a functional API for the training interface as well.<br>
-- The JAX community is very focused on research, and as such there is a lot of interest in flexibility and control over the training loop. For this reason, `ciclo` provides some basic utilities and lets the user choose their desired level of abstraction.<br>
-- Choosing the wrong abstractions can often break a framework, when this happens users often abandone the framework altogether. `ciclo` tries to avoid this by providing a set of utilities than can stand on their own so they can be useful even if the user decides to build their own training loop, but allows them to compose together and be used with ever increasing levels of abstraction. Ideally in the future a user should be able to pick anything from a Keras-like simplified experience to defining their own loops, or just coding the training loop manually and still have a good experience.<br><br>
-
-
-<b>Comparison with other libraries</b><br><br>
-
-- What about Elegy? Ciclo can be seen as the next version of Elegy that is built with better foundations. While Elegy started with a very rigid high-level API and gradually added more flexibility, Ciclo starts with low-level utilities and gradually adds more abstraction.<br>
-- What about `clu`? Ciclo took from inspiration from `clu` and rather than compete with it, Ciclo aims to complement it. At the lowest level they both compose by virtue of just providing utilities that work with JAX, however, whenever possible Ciclo's abstractions provide support for `clu`'s utilities e.g. `loop` supports `clu`'s `PeriodicAction`s.<br>
-
-</details>
-
-<h2 id="installation">Installation</h2>
-<div class="highlight"><pre><span></span><code>pip<span class="w"> </span>install<span class="w"> </span>ciclo
-</code></pre></div>
+🌀 Loop language <br>
+✔️ Predefined Loops <br>
+🧪 Managed API (simplified training + parallelism support) [experimental] <br>
+🧪 Framework support (predifined states) [experimental] <br></p>
 <h2 id="status">Status</h2>
 <p>Ciclo is still in early development, the API is subject to change, expect things to break. If you are interested in contributing, please reach out.</p>
-<h2 id="utilities">Utilities</h2>
-<ul>
-<li>Time tracking</li>
-<li>Logging</li>
-<li>Schedules</li>
-<li>Callbacks</li>
-<li>Loops</li>
-<li>Parallelism [experimental]</li>
-</ul>
-<h2 id="quick-start">Quick Start</h2>
-<p>The <code>loop</code> function serves as a mini-language for defining training loops as a composition of functions. The tasks dictionary lets you express the desired behavior of the loop as a composition of schedules and callbacks.</p>
-<div class="highlight"><pre><span></span><code><span class="nd">@jax</span><span class="o">.</span><span class="n">jit</span>
+<h2 id="getting-started">Getting Started</h2>
+<p>To get started with Ciclo, you can install it via pip:</p>
+<p><div class="highlight"><pre><span></span><code><span class="n">pip</span> <span class="n">install</span> <span class="n">ciclo</span>
+</code></pre></div>
+Once you've installed Ciclo, you can import it into your Python script:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span> <span class="nn">ciclo</span>
+</code></pre></div>
+<h3 id="loop-language">🌀 Loop Language</h3>
+<p>The <code>loop</code> function in <code>ciclo</code> serves as a mini-language for defining training loops by composing functions. With the <code>tasks</code> dictionary, you can express the desired behavior of the loop as a composition of schedules and their corresponding callbacks.</p>
+<p>To use the <code>loop</code> function, you first define your training steps as JAX functions, and then create a dictionary where the keys are schedules, and the values are lists of callbacks to execute at each scheduled interval.</p>
+<p><div class="highlight"><pre><span></span><code><span class="nd">@jax</span><span class="o">.</span><span class="n">jit</span>
 <span class="k">def</span> <span class="nf">train_step</span><span class="p">(</span><span class="n">state</span><span class="p">,</span> <span class="n">batch</span><span class="p">):</span>
-    <span class="o">...</span> <span class="c1"># update model state and create logs</span>
+    <span class="o">...</span> <span class="c1"># do JAX stuff to update state</span>
+    <span class="n">logs</span> <span class="o">=</span> <span class="n">ciclo</span><span class="o">.</span><span class="n">logs</span><span class="p">()</span>
+    <span class="n">logs</span><span class="o">.</span><span class="n">add_metric</span><span class="p">(</span><span class="s2">&quot;accuracy&quot;</span><span class="p">,</span> <span class="n">accuracy</span><span class="p">)</span>
+    <span class="n">logs</span><span class="o">.</span><span class="n">add_metric</span><span class="p">(</span><span class="s2">&quot;loss&quot;</span><span class="p">,</span> <span class="n">loss</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">logs</span><span class="p">,</span> <span class="n">state</span>
 
-<span class="n">total_steps</span> <span class="o">=</span> <span class="mi">10_000</span>
+<span class="n">total_steps</span> <span class="o">=</span> <span class="mi">100</span>
 <span class="n">state</span> <span class="o">=</span> <span class="n">create_state</span><span class="p">()</span> <span class="c1"># initial state</span>
 
 <span class="n">state</span><span class="p">,</span> <span class="n">history</span><span class="p">,</span> <span class="n">elapsed</span> <span class="o">=</span> <span class="n">ciclo</span><span class="o">.</span><span class="n">loop</span><span class="p">(</span>
-    <span class="n">state</span><span class="p">,</span> <span class="c1"># state: Pytree</span>
-    <span class="n">dataset</span><span class="p">,</span> <span class="c1"># dataset: Iterable[Batch]</span>
-    <span class="p">{</span>
-        <span class="c1"># Dict[Schedule, List[Callback]]</span>
+    <span class="n">state</span><span class="p">,</span> <span class="c1"># Pytree</span>
+    <span class="n">dataset</span><span class="p">,</span> <span class="c1"># Iterable[Batch]</span>
+    <span class="p">{</span> <span class="c1"># Schedule: List[Callback]</span>
         <span class="n">ciclo</span><span class="o">.</span><span class="n">every</span><span class="p">(</span><span class="mi">1</span><span class="p">):</span> <span class="p">[</span><span class="n">train_step</span><span class="p">],</span>
-        <span class="n">ciclo</span><span class="o">.</span><span class="n">every</span><span class="p">(</span><span class="n">steps</span><span class="o">=</span><span class="mi">1000</span><span class="p">):</span> <span class="p">[</span><span class="n">ciclo</span><span class="o">.</span><span class="n">checkpoint</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;logdir/model&quot;</span><span class="p">)],</span>
+        <span class="n">ciclo</span><span class="o">.</span><span class="n">every</span><span class="p">(</span><span class="n">steps</span><span class="o">=</span><span class="mi">10</span><span class="p">):</span> <span class="p">[</span><span class="n">ciclo</span><span class="o">.</span><span class="n">checkpoint</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;logdir/model&quot;</span><span class="p">)],</span>
         <span class="n">ciclo</span><span class="o">.</span><span class="n">every</span><span class="p">(</span><span class="mi">1</span><span class="p">):</span> <span class="p">[</span><span class="n">ciclo</span><span class="o">.</span><span class="n">keras_bar</span><span class="p">(</span><span class="n">total</span><span class="o">=</span><span class="n">total_steps</span><span class="p">)],</span>
     <span class="p">},</span>
-    <span class="n">stop</span><span class="o">=</span><span class="n">total_steps</span><span class="p">,</span> <span class="c1"># stop: Optional[int | Period]</span>
+    <span class="n">stop</span><span class="o">=</span><span class="n">total_steps</span><span class="p">,</span>
 <span class="p">)</span>
 </code></pre></div>
-<p>You can also use Ciclo's utilities to build your own training loop when you need more control. </p>
-<div class="highlight"><pre><span></span><code><span class="n">total_steps</span> <span class="o">=</span> <span class="mi">5_000</span>
-<span class="n">state</span> <span class="o">=</span> <span class="n">create_state</span><span class="p">()</span> <span class="c1"># initial state</span>
+<div class="highlight"><pre><span></span><code>80/100 [=====================&gt;.....] - ETA: 42s - accuracy: 0.6148 - loss: 1.537120
+</code></pre></div></p>
+<p>At each iteration, callbacks can update the state and append new logs, the <code>loop</code> function returns the final state, the history of logs, and the elapsed time. Depending on the nature of each callback, the order in which they are executed may be very important e.g. <code>keras_bar</code> should always be last so that it can display the metrics produced by previous callbacks.</p>
+<h3 id="predefined-loops">🧪 Predefined Loops</h3>
+<p><code>ciclo</code> provides a set of predefined loops that you can use out of the box for common scenarios:</p>
+<ul>
+<li><code>train_loop</code>: a training loop with an inner evaluation loop</li>
+<li><code>test_loop</code>: an evaluation loop</li>
+<li><code>predict_loop</code>: an inference loop</li>
+</ul>
+<p>All of these loops are built on top of the <code>loop</code> function and extend the loop language with additional <strong>named schedules</strong> which run at specific points in the loop. They also provide a <code>callbacks</code> argument allows you to add callbacks without specifying a schedule, instead, if they contain an attribute that matches the name of a named schedule it will be automatically registered to that schedule. This also applies for methods of the <code>state</code> object.</p>
+<p>Here's an example of how to use the <code>train_loop</code>:</p>
+<p><div class="highlight"><pre><span></span><code><span class="nd">@jax</span><span class="o">.</span><span class="n">jit</span>
+<span class="k">def</span> <span class="nf">test_step</span><span class="p">(</span><span class="n">state</span><span class="p">,</span> <span class="n">batch</span><span class="p">):</span>
+    <span class="o">...</span> <span class="c1"># do JAX stuff</span>
+    <span class="n">logs</span> <span class="o">=</span> <span class="n">ciclo</span><span class="o">.</span><span class="n">logs</span><span class="p">()</span>
+    <span class="n">logs</span><span class="o">.</span><span class="n">add_metric</span><span class="p">(</span><span class="s2">&quot;accuracy&quot;</span><span class="p">,</span> <span class="n">accuracy</span><span class="p">)</span>
+    <span class="n">logs</span><span class="o">.</span><span class="n">add_metric</span><span class="p">(</span><span class="s2">&quot;loss&quot;</span><span class="p">,</span> <span class="n">loss</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">logs</span><span class="p">,</span> <span class="n">state</span>
 
-<span class="n">call_checkpoint</span> <span class="o">=</span> <span class="n">ciclo</span><span class="o">.</span><span class="n">every</span><span class="p">(</span><span class="n">steps</span><span class="o">=</span><span class="mi">1000</span><span class="p">)</span> <span class="c1"># Schedule</span>
+<span class="n">state</span><span class="p">,</span> <span class="n">history</span><span class="p">,</span> <span class="n">elapsed</span> <span class="o">=</span> <span class="n">ciclo</span><span class="o">.</span><span class="n">train_loop</span><span class="p">(</span>
+    <span class="n">state</span><span class="p">,</span> <span class="c1"># Pytree</span>
+    <span class="n">train_dataset</span><span class="p">,</span> <span class="c1"># Iterable[Batch]</span>
+    <span class="p">{</span> <span class="c1"># Schedule: List[Callback]</span>
+        <span class="n">ciclo</span><span class="o">.</span><span class="n">on_train_step</span><span class="p">:</span> <span class="p">[</span><span class="n">train_step</span><span class="p">],</span> <span class="c1"># named schedules</span>
+        <span class="n">ciclo</span><span class="o">.</span><span class="n">on_test_step</span><span class="p">:</span> <span class="p">[</span><span class="n">test_step</span><span class="p">],</span> <span class="c1"># named schedules</span>
+        <span class="n">ciclo</span><span class="o">.</span><span class="n">every</span><span class="p">(</span><span class="mi">20</span><span class="p">):</span> <span class="p">[</span><span class="n">some_callback</span><span class="p">],</span> <span class="c1"># regular schedules also supported</span>
+    <span class="p">},</span>
+    <span class="n">test_dataset</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="n">get_test_dataset</span><span class="p">(),</span> <span class="c1"># lazy test dataset definition</span>
+    <span class="n">epoch_duration</span><span class="o">=</span><span class="n">steps_per_epoch</span><span class="p">,</span>
+    <span class="n">callbacks</span><span class="o">=</span><span class="p">[</span>
+        <span class="c1"># callback self-registration</span>
+        <span class="n">ciclo</span><span class="o">.</span><span class="n">keras_bar</span><span class="p">(</span><span class="n">total</span><span class="o">=</span><span class="n">total_steps</span><span class="p">),</span> <span class="c1"># runs on ciclo.on_train_batch_end</span>
+        <span class="n">ciclo</span><span class="o">.</span><span class="n">checkpoint</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;logdir/model&quot;</span><span class="p">),</span>  <span class="c1"># runs on ciclo.on_epoch_end</span>
+    <span class="p">],</span>
+    <span class="n">stop</span><span class="o">=</span><span class="n">total_steps</span><span class="p">,</span>
+<span class="p">)</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code>80/100 [=====================&gt;.....] - ETA: 42s - accuracy: 0.6148 - loss: 1.537120
+</code></pre></div></p>
+<h3 id="managed-api">Managed API 🧪</h3>
+<p>The <code>managed</code> API aims to simplify the process of creating JAX programs for common patterns, such as <code>jit</code>, data parallelism with <code>pmap</code>, etc. To use this API, you need to define a compatible state type, which can be easily achieved by inheriting from <code>managed.ManagedState</code>.</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span> <span class="nn">ciclo</span> <span class="kn">import</span> <span class="n">managed</span>
+
+<span class="n">state</span> <span class="o">=</span> <span class="n">managed</span><span class="o">.</span><span class="n">ManagedState</span><span class="o">.</span><span class="n">create</span><span class="p">(</span>
+    <span class="n">params</span><span class="o">=</span><span class="n">params</span><span class="p">,</span> <span class="c1"># can be any pytree</span>
+    <span class="n">tx</span><span class="o">=</span><span class="n">optax</span><span class="o">.</span><span class="n">adamw</span><span class="p">(</span><span class="mf">1e-3</span><span class="p">),</span> <span class="c1"># optax optimizer</span>
+    <span class="n">strategy</span><span class="o">=</span><span class="s2">&quot;jit&quot;</span><span class="p">,</span> <span class="c1"># &quot;data-parallel&quot; or &quot;eager&quot;</span>
+<span class="p">)</span>
+</code></pre></div>
+<p>With the managed API, you can use the <code>train_step</code> decorator to define a training step easily. The <code>managed.train_step</code> function expects you to return logs with at least one loss, which will be used to automatically compute the gradients and update the parameters.</p>
+<div class="highlight"><pre><span></span><code><span class="nd">@managed</span><span class="o">.</span><span class="n">train_step</span>
+<span class="k">def</span> <span class="nf">train_step</span><span class="p">(</span><span class="n">state</span><span class="p">,</span> <span class="n">batch</span><span class="p">):</span>
+    <span class="n">loss</span> <span class="o">=</span> <span class="o">...</span> <span class="c1"># compute loss</span>
+    <span class="n">logs</span> <span class="o">=</span> <span class="n">ciclo</span><span class="o">.</span><span class="n">logs</span><span class="p">()</span>
+    <span class="n">logs</span><span class="o">.</span><span class="n">add_loss</span><span class="p">(</span><span class="s2">&quot;loss&quot;</span><span class="p">,</span> <span class="n">loss</span><span class="p">)</span> <span class="c1"># &lt;&lt;&lt; register loss</span>
+    <span class="k">return</span> <span class="n">logs</span><span class="p">,</span> <span class="n">state</span>
+
+<span class="k">for</span> <span class="n">batch</span> <span class="ow">in</span> <span class="n">train_dataset</span><span class="p">:</span>
+    <span class="n">logs</span><span class="p">,</span> <span class="n">state</span> <span class="o">=</span> <span class="n">train_step</span><span class="p">(</span><span class="n">state</span><span class="p">,</span> <span class="n">batch</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;loss: </span><span class="si">{</span><span class="n">logs</span><span class="o">.</span><span class="n">losses</span><span class="o">.</span><span class="n">loss</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</code></pre></div>
+<p>If you need to perform some computation under a strategy without automatically computing gradients and updating the parameters, you can use the <code>managed.step</code> decorator.</p>
+<div class="highlight"><pre><span></span><code><span class="nd">@managed</span><span class="o">.</span><span class="n">step</span>
+<span class="k">def</span> <span class="nf">test_step</span><span class="p">(</span><span class="n">state</span><span class="p">,</span> <span class="n">batch</span><span class="p">):</span>
+    <span class="n">loss</span> <span class="o">=</span> <span class="o">...</span> <span class="c1"># compute loss</span>
+    <span class="n">logs</span> <span class="o">=</span> <span class="n">ciclo</span><span class="o">.</span><span class="n">logs</span><span class="p">()</span>
+    <span class="n">logs</span><span class="o">.</span><span class="n">add_metric</span><span class="p">(</span><span class="s2">&quot;loss&quot;</span><span class="p">,</span> <span class="n">loss</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">logs</span><span class="p">,</span> <span class="n">state</span>
+</code></pre></div>
+<h3 id="framework-support">Framework Support 🧪</h3>
+<p>To make JAX accessible for begginers, <code>ciclo</code> plans to provide a set of predefined state types for common frameworks, such as <code>flax</code>, <code>haiku</code>, and <code>equinox</code> (for now only <code>flax</code> is supported). These types are based on <code>ManagedState</code> and make it easy to perform tasks like training, evaluation, and inference without having to have a deep understanding of either the framework or JAX. Similar to Keras you just provide a model, an optimizer, some losses and metrics:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span> <span class="nn">flax.linen</span> <span class="k">as</span> <span class="nn">nn</span>
+
+<span class="n">model</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Sequential</span><span class="p">([</span>
+    <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="o">.</span><span class="n">reshape</span><span class="p">((</span><span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="o">-</span><span class="mi">1</span><span class="p">))</span> <span class="o">/</span> <span class="mf">255.0</span><span class="p">,</span>
+    <span class="n">nn</span><span class="o">.</span><span class="n">Dense</span><span class="p">(</span><span class="mi">128</span><span class="p">),</span>
+    <span class="n">nn</span><span class="o">.</span><span class="n">relu</span><span class="p">,</span>
+    <span class="n">nn</span><span class="o">.</span><span class="n">Dense</span><span class="p">(</span><span class="mi">10</span><span class="p">),</span>
+<span class="p">])</span>
+<span class="n">state</span> <span class="o">=</span> <span class="n">ciclo</span><span class="o">.</span><span class="n">create_flax_state</span><span class="p">(</span>
+    <span class="n">model</span><span class="p">,</span>
+    <span class="n">inputs</span><span class="o">=</span><span class="n">jnp</span><span class="o">.</span><span class="n">empty</span><span class="p">((</span><span class="mi">1</span><span class="p">,</span> <span class="mi">28</span><span class="p">,</span> <span class="mi">28</span><span class="p">,</span> <span class="mi">1</span><span class="p">)),</span>
+    <span class="n">tx</span><span class="o">=</span><span class="n">optax</span><span class="o">.</span><span class="n">adamw</span><span class="p">(</span><span class="mf">1e-3</span><span class="p">),</span>
+    <span class="n">losses</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;loss&quot;</span><span class="p">:</span> <span class="n">cross_entropy_loss</span><span class="p">},</span>
+    <span class="n">metrics</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;accuracy&quot;</span><span class="p">:</span> <span class="n">Accuracy</span><span class="p">,</span> <span class="s2">&quot;avg_loss&quot;</span><span class="p">:</span> <span class="n">AverageLoss</span><span class="p">},</span>
+    <span class="n">strategy</span><span class="o">=</span><span class="s2">&quot;jit&quot;</span><span class="p">,</span> <span class="c1"># &quot;data-parallel&quot; or &quot;eager&quot;</span>
+<span class="p">)</span>
+</code></pre></div>
+<p>These custom <code>state</code> objects provide <code>train_step</code>, <code>test_step</code>, and <code>predict_step</code> methods, this means that when used with the <code>train_loop</code>, <code>test_loop</code>, and <code>predict_loop</code> APIs, they provide a highly simplified experience:</p>
+<div class="highlight"><pre><span></span><code><span class="n">state</span><span class="p">,</span> <span class="n">history</span><span class="p">,</span> <span class="n">elapsed</span> <span class="o">=</span> <span class="n">ciclo</span><span class="o">.</span><span class="n">train_loop</span><span class="p">(</span>
+    <span class="n">state</span><span class="p">,</span> <span class="c1"># methods are automatically registered</span>
+    <span class="n">train_dataset</span><span class="p">,</span>
+    <span class="n">callbacks</span><span class="o">=</span><span class="p">[</span>
+        <span class="n">ciclo</span><span class="o">.</span><span class="n">keras_bar</span><span class="p">(</span><span class="n">total</span><span class="o">=</span><span class="n">total_steps</span><span class="p">),</span>
+    <span class="p">],</span>
+    <span class="n">test_dataset</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="n">get_test_dataset</span><span class="p">(),</span>
+    <span class="n">epoch_duration</span><span class="o">=</span><span class="n">steps_per_epoch</span><span class="p">,</span>
+    <span class="n">stop</span><span class="o">=</span><span class="n">total_steps</span><span class="p">,</span>
+<span class="p">)</span>
+</code></pre></div>
+<p>You can also use the <code>train_step</code>, <code>test_step</code>, and <code>predict_step</code> methods directly to create custom training procedures:</p>
+<div class="highlight"><pre><span></span><code><span class="k">for</span> <span class="n">batch</span> <span class="ow">in</span> <span class="n">train_dataset</span><span class="p">:</span>
+    <span class="n">logs</span><span class="p">,</span> <span class="n">state</span> <span class="o">=</span> <span class="n">state</span><span class="o">.</span><span class="n">train_step</span><span class="p">(</span><span class="n">batch</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;loss: </span><span class="si">{</span><span class="n">logs</span><span class="o">.</span><span class="n">losses</span><span class="o">.</span><span class="n">loss</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="manual-iteration">Manual Iteration</h3>
+<p>Ciclo provides a set of loosely coupled APIs that can be used independently from the <code>loop</code> API to create custom training procedures when more control is needed. In the example below, we demonstrate how to manually iterate through a training dataset using <code>ciclo</code>.</p>
+<p>First, we define a few callbacks and utilities such as <code>call_checkpoint</code>, <code>checkpoint</code>, <code>keras_bar</code>, and <code>history</code>. Then, we use the <code>ciclo.elapse</code> function to iterate through the training dataset for a specified number of steps. During each iteration, we update the <code>logs</code> and <code>state</code> using the <code>train_step</code> function. We periodically checkpoint the <code>state</code>, update a progress bar, and commit the logs to the <code>history</code>.</p>
+<p><div class="highlight"><pre><span></span><code><span class="n">call_checkpoint</span> <span class="o">=</span> <span class="n">ciclo</span><span class="o">.</span><span class="n">every</span><span class="p">(</span><span class="n">steps</span><span class="o">=</span><span class="mi">1000</span><span class="p">)</span> <span class="c1"># Schedule</span>
 <span class="n">checkpoint</span> <span class="o">=</span> <span class="n">ciclo</span><span class="o">.</span><span class="n">checkpoint</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;logdir/model&quot;</span><span class="p">)</span> <span class="c1"># Callback</span>
 <span class="n">keras_bar</span> <span class="o">=</span> <span class="n">ciclo</span><span class="o">.</span><span class="n">keras_bar</span><span class="p">(</span><span class="n">total</span><span class="o">=</span><span class="n">total_steps</span><span class="p">)</span> <span class="c1"># Callback</span>
 <span class="n">history</span> <span class="o">=</span> <span class="n">ciclo</span><span class="o">.</span><span class="n">history</span><span class="p">()</span> <span class="c1"># History</span>
 <span class="c1"># (Elapsed, Batch)</span>
-<span class="k">for</span> <span class="n">elapsed</span><span class="p">,</span> <span class="n">batch</span> <span class="ow">in</span> <span class="n">ciclo</span><span class="o">.</span><span class="n">elapse</span><span class="p">(</span><span class="n">ds_train</span><span class="o">.</span><span class="n">as_numpy_iterator</span><span class="p">(),</span> <span class="n">stop</span><span class="o">=</span><span class="n">total_steps</span><span class="p">):</span>
+<span class="k">for</span> <span class="n">elapsed</span><span class="p">,</span> <span class="n">batch</span> <span class="ow">in</span> <span class="n">ciclo</span><span class="o">.</span><span class="n">elapse</span><span class="p">(</span><span class="n">train_dataset</span><span class="p">,</span> <span class="n">stop</span><span class="o">=</span><span class="n">total_steps</span><span class="p">):</span>
     <span class="n">logs</span> <span class="o">=</span> <span class="n">ciclo</span><span class="o">.</span><span class="n">logs</span><span class="p">()</span> <span class="c1"># Logs</span>
     <span class="c1"># update logs and state</span>
     <span class="n">logs</span><span class="o">.</span><span class="n">updates</span><span class="p">,</span> <span class="n">state</span> <span class="o">=</span> <span class="n">train_step</span><span class="p">(</span><span class="n">state</span><span class="p">,</span> <span class="n">batch</span><span class="p">)</span>
@@ -384,6 +555,17 @@
     <span class="n">keras_bar</span><span class="p">(</span><span class="n">elapsed</span><span class="p">,</span> <span class="n">logs</span><span class="p">)</span> <span class="c1"># update progress bar</span>
     <span class="n">history</span><span class="o">.</span><span class="n">commit</span><span class="p">(</span><span class="n">elapsed</span><span class="p">,</span> <span class="n">logs</span><span class="p">)</span> <span class="c1"># commit logs to history</span>
 </code></pre></div>
+This approach allows for fine-grained control over the training process and enables customization of various aspects of the training loop.</p>
+<h2 id="examples">Examples</h2>
+<p>For a more in-depth look at how to use <code>ciclo</code>, check out our <a href="./examples">examples</a> folder which contains a set of python scripts that demonstrate how to use <code>ciclo</code> to train models using different APIs.</p>
+<ul>
+<li><a href="examples/00_linear_regression_pure_jax.py">00 Linear Regression</a> (pure jax)</li>
+<li><a href="examples/01_mnist_simple.py">01 Simple MNIST</a></li>
+<li><a href="examples/02_mnist_train_loop.py">02 Using train_loop</a></li>
+<li><a href="examples/03_mnist_manual_iteration.py">03 Manual Iteration</a></li>
+<li><a href="examples/04_mnist_managed_api.py">04 Managed API</a></li>
+<li><a href="examples/05_mnist_flax_state.py">05 Using create_flax_state</a></li>
+</ul>
 
 
 
