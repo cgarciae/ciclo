@@ -63,7 +63,7 @@ state, history, elapsed = ciclo.loop(
 
 At each iteration, callbacks can update the state and append new logs, the `loop` function returns the final state, the history of logs, and the elapsed time. Depending on the nature of each callback, the order in which they are executed may be very important e.g. `keras_bar` should always be last so that it can display the metrics produced by previous callbacks.
 
-### 🧪 Predefined Loops
+### Predefined Loops
 
 `ciclo` provides a set of predefined loops that you can use out of the box for common scenarios:
 
