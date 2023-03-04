@@ -48,35 +48,38 @@ class Metrics(Collection):
 class TrainState(train_state.TrainState):
     metrics: Metrics
 
-    @jax.jit
-    def train_step(self, batch):
-        def loss_fn(params):
-            logits = self.apply_fn({"params": params}, batch["image"])
-            loss = optax.softmax_cross_entropy_with_integer_labels(
-                logits=logits, labels=batch["label"]
-            ).mean()
-            return loss, logits
 
-        (loss, logits), grads = jax.value_and_grad(loss_fn, has_aux=True)(self.params)
-        self = self.apply_gradients(grads=grads)
-        metrics = self.metrics.update(loss=loss, logits=logits, labels=batch["label"])
-        logs = ciclo.logs()
-        logs.add_stateful_metrics(metrics.compute())
-        return logs, self.replace(metrics=metrics)
-
-    @jax.jit
-    def test_step(self, batch):
-        logits = self.apply_fn({"params": self.params}, batch["image"])
+@jax.jit
+def train_step(state: TrainState, batch):
+    def loss_fn(params):
+        logits = state.apply_fn({"params": params}, batch["image"])
         loss = optax.softmax_cross_entropy_with_integer_labels(
             logits=logits, labels=batch["label"]
         ).mean()
-        metrics = self.metrics.update(loss=loss, logits=logits, labels=batch["label"])
-        logs = ciclo.logs()
-        logs.add_stateful_metrics(metrics.compute())
-        return logs, self.replace(metrics=metrics)
+        return loss, logits
 
-    def reset_step(self):
-        return self.replace(metrics=self.metrics.empty())
+    (loss, logits), grads = jax.value_and_grad(loss_fn, has_aux=True)(state.params)
+    state = state.apply_gradients(grads=grads)
+    metrics = state.metrics.update(loss=loss, logits=logits, labels=batch["label"])
+    logs = ciclo.logs()
+    logs.add_stateful_metrics(**metrics.compute())
+    return logs, state.replace(metrics=metrics)
+
+
+@jax.jit
+def test_step(state: TrainState, batch):
+    logits = state.apply_fn({"params": state.params}, batch["image"])
+    loss = optax.softmax_cross_entropy_with_integer_labels(
+        logits=logits, labels=batch["label"]
+    ).mean()
+    metrics = state.metrics.update(loss=loss, logits=logits, labels=batch["label"])
+    logs = ciclo.logs()
+    logs.add_stateful_metrics(**metrics.compute())
+    return logs, state.replace(metrics=metrics)
+
+
+def reset_step(state: TrainState):
+    return state.replace(metrics=state.metrics.empty())
 
 
 # Initialize state
@@ -99,6 +102,11 @@ log_steps = total_steps // 50
 state, history, _ = ciclo.train_loop(
     state,
     ds_train.as_numpy_iterator(),
+    {
+        ciclo.on_train_step: [train_step],
+        ciclo.on_test_step: [test_step],
+        ciclo.on_reset_step: [reset_step],
+    },
     callbacks=[
         ciclo.checkpoint(
             f"logdir/{Path(__file__).stem}/{int(time())}",

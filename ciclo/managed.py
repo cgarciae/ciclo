@@ -6,13 +6,16 @@ from typing import (
     Generic,
     Mapping,
     MutableMapping,
+    Optional,
     Type,
     TypeVar,
     Union,
 )
 
 import jax
+import optax
 from flax import struct
+from flax.core import FrozenDict
 from flax.training import train_state
 from typing_extensions import Protocol, runtime_checkable
 
@@ -67,6 +70,10 @@ class ManagedFunctionCallback(ManagedCallback[S]):
         return to_standard_outputs(outputs, state)
 
 
+def _no_apply_given() -> None:
+    raise RuntimeError("Trying to use '.apply_fn' but none was passed to `create`.")
+
+
 class ManagedState(train_state.TrainState):
     """
     A train state that manages the strategy.
@@ -78,12 +85,13 @@ class ManagedState(train_state.TrainState):
     def create(
         cls: Type[S],
         *,
-        apply_fn,
-        params,
-        tx,
+        params: FrozenDict[str, Any],
+        tx: optax.GradientTransformation,
+        apply_fn: Optional[Callable[..., Any]] = None,
         strategy: Union[Strategy, str] = "jit",
-        **kwargs,
+        **kwargs: Any,
     ) -> S:
+        apply_fn = apply_fn or _no_apply_given
         state = super().create(
             apply_fn=apply_fn,
             params=params,

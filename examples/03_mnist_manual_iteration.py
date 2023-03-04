@@ -44,11 +44,12 @@ def train_step(state: TrainState, batch):
 
     (loss, logits), grads = jax.value_and_grad(loss_fn, has_aux=True)(state.params)
     state = state.apply_gradients(grads=grads)
-    logs = {
-        "loss": loss,
-        "accuracy": jnp.mean(jnp.argmax(logits, -1) == labels),
-    }
-    return {"metrics": logs}, state
+    logs = ciclo.logs()
+    logs.add_metrics(
+        loss=loss,
+        accuracy=jnp.mean(jnp.argmax(logits, -1) == labels),
+    )
+    return logs, state
 
 
 # Initialize state

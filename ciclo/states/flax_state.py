@@ -209,7 +209,7 @@ class FlaxState(Generic[M], managed.ManagedState):
         return self._step(batch, elapsed, training=False)
 
     @managed.step
-    def pred_step(self, batch, elapsed: Elapsed):
+    def predict_step(self, batch, elapsed: Elapsed):
         inputs, labels, sample_weight = unpack_x_y_sample_weight(batch)
         key = jax.random.fold_in(self.key, elapsed.steps)
         preds, _ = self.apply(key, inputs, training=False)

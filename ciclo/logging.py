@@ -1,17 +1,6 @@
-from typing import (
-    Any,
-    Dict,
-    List,
-    Mapping,
-    MutableMapping,
-    Optional,
-    Tuple,
-    Union,
-    overload,
-)
+from typing import Any, Dict, List, Optional, Tuple, Type, Union, overload
 
 import jax
-import jax.numpy as jnp
 import numpy as np
 from jax.tree_util import register_pytree_node
 
@@ -19,14 +8,24 @@ from ciclo.timetracking import Elapsed
 from ciclo.types import CluMetric, LogPath
 
 LogsLike = Dict[str, Dict[str, Any]]
+Collection = str
+Entry = str
 
 
-class Logs(LogsLike):
-    def __init__(self, *args, **kwargs):
+class Entries(Dict[Entry, Any]):
+    def __getattr__(self, entry: Entry) -> Any:
+        if entry in self:
+            return self[entry]
+        else:
+            raise AttributeError(f"Entry '{entry}' not found in logs.")
+
+
+class Logs(Dict[Collection, Entries]):
+    def __init__(self, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
         # copy values
         for k, v in self.items():
-            self[k] = dict(v)
+            self[k] = Entries(v)
 
     @property
     def updates(self) -> Optional[LogsLike]:
@@ -38,78 +37,79 @@ class Logs(LogsLike):
         if updates is not None:
             self.merge(updates)
 
+    def __getattr__(self, collection: Collection) -> Entries:
+        if collection in self:
+            return self[collection]
+        else:
+            raise AttributeError(f"Collection '{collection}' not found in logs.")
+
     # ----------------------------------
     # logger behavior
     # ----------------------------------
-    def add_entry(self, collection: str, name: str, value: Any) -> "Logs":
+    def add_entry(self, collection: Collection, entry: Entry, value: Any) -> "Logs":
         if collection not in self:
-            self[collection] = {}
-
-        mapping = self[collection]
-
-        if not isinstance(mapping, MutableMapping):
-            raise ValueError(
-                f"Invalid collection '{collection}' of type '{type(mapping).__name__}', must be a MutableMapping"
-            )
-
-        mapping[name] = value
-
+            self[collection] = Entries()
+        self[collection][entry] = value
         return self
 
-    def add_entries(self, collection: str, values: Dict[str, Any]) -> "Logs":
+    def add_entries(self, collection: Collection, **values: Any) -> "Logs":
         for name, value in values.items():
             self.add_entry(collection, name, value)
 
         return self
 
-    def add_metric(self, name: str, value: Any) -> "Logs":
+    def add_metric(self, entry: Entry, value: Any) -> "Logs":
         if isinstance(value, CluMetric):
             raise ValueError(
-                f"Metric '{name}' is a clu Metric which is stateful, use 'add_stateful_metric' instead"
+                f"Metric '{entry}' is a clu Metric which is "
+                "stateful, use 'add_stateful_metric' instead"
             )
-        return self.add_entry("metrics", name, value)
+        return self.add_entry("metrics", entry, value)
 
-    def add_metrics(self, metrics: Dict[str, Any]):
-        for name, value in metrics.items():
-            self.add_metric(name, value)
+    def add_metrics(self, **metrics: Any):
+        return self.add_entries("metrics", **metrics)
 
-    def add_stateful_metric(self, name: str, value: Any) -> "Logs":
+    def add_stateful_metric(self, name: Entry, value: Any) -> "Logs":
         return self.add_entry("stateful_metrics", name, value)
 
-    def add_stateful_metrics(self, metrics: Dict[str, Any]) -> "Logs":
-        for name, value in metrics.items():
-            self.add_stateful_metric(name, value)
-        return self
+    def add_stateful_metrics(self, **metrics: Any) -> "Logs":
+        return self.add_entries("stateful_metrics", **metrics)
 
-    def add_loss(self, name: str, value: Any, *, add_metric: bool = False) -> "Logs":
+    def add_loss(self, name: Entry, value: Any, *, add_metric: bool = False) -> "Logs":
         self.add_entry("losses", name, value)
         if add_metric:
             self.add_metric(name, value)
         return self
 
     def add_losses(
-        self, losses: Dict[str, Any], *, add_metrics: bool = False
+        self,
+        *,
+        add_metrics: bool = False,
+        **losses: Any,
     ) -> "Logs":
-        for name, value in losses.items():
-            self.add_loss(name, value, add_metric=add_metrics)
+        self.add_entries("losses", **losses)
+        if add_metrics:
+            self.add_metrics(**losses)
         return self
 
-    def add_output(self, name: str, value: Any, *, per_sample: bool = True) -> "Logs":
-        collection = "per_sample_outputs" if per_sample else "outputs"
-        self.add_entry(collection, name, value)
+    def add_output(self, name: Entry, value: Any) -> "Logs":
+        return self.add_entry("outputs", name, value)
+
+    def add_outputs(self, **outputs: Any) -> "Logs":
+        return self.add_entries("outputs", **outputs)
 
     # ----------------------------------
     # history behavior
     # ----------------------------------
 
-    def entry_value(self, name: str) -> Any:
+    def entry_value(self, name: Entry) -> Any:
         path = self.entry_path(name)
         if path is None:
             raise KeyError(f"Key {name} not found in logs.")
         collection, name = path
         return self[collection][name]
 
-    def entry_path(self, name: str) -> Optional[LogPath]:
+    def entry_path(self, name: Entry) -> Optional[LogPath]:
         path = name.split(".")
 
         if len(path) == 1:
@@ -124,7 +124,7 @@ class Logs(LogsLike):
 
         return collection, name
 
-    def entry_collection(self, name: str) -> Optional[str]:
+    def entry_collection(self, name: Entry) -> Optional[str]:
         collections = [col for col in self if name in self[col]]
 
         if len(collections) == 0:
@@ -142,19 +142,28 @@ class Logs(LogsLike):
             if collection in self:
                 self[collection].update(updates)
             else:
-                self[collection] = dict(updates)  # create copy
+                self[collection] = Entries(updates)  # create copy
 
 
-def _logs_tree_flatten(self):
-    return (dict(self),), None
+def _mapping_tree_flatten(tree: Dict[Any, Any]):
+    return (dict(tree),), None
 
 
-def _logs_tree_unflatten(aux_data, children):
-    self = Logs(children[0])
-    return self
+def _mapping_tree_unflatten(cls: Type[Dict[Any, Any]], children: Tuple[Dict[str, Any]]):
+    tree = cls(children[0])
+    return tree
 
 
-register_pytree_node(Logs, _logs_tree_flatten, _logs_tree_unflatten)
+register_pytree_node(
+    Logs,
+    _mapping_tree_flatten,
+    lambda _, children: _mapping_tree_unflatten(Logs, children),
+)
+register_pytree_node(
+    Entries,
+    _mapping_tree_flatten,
+    lambda _, children: _mapping_tree_unflatten(Entries, children),
+)
 
 # ----------------------------------
 # history
@@ -167,12 +176,10 @@ class History(List[Logs]):
         ...
 
     @overload
-    def collect(self, key: str, *keys: str) -> Tuple[List[Any], ...]:
+    def collect(self, *keys: str) -> Tuple[List[Any], ...]:
         ...
 
-    def collect(
-        self, key: str, *keys: str
-    ) -> Union[Logs, List[Any], Tuple[List[Any], ...]]:
+    def collect(self, key: str, *keys: str) -> Union[List[Any], Tuple[List[Any], ...]]:
         keys = (key,) + keys
         outputs = tuple([] for _ in keys)
         for logs in self:
@@ -185,15 +192,11 @@ class History(List[Logs]):
 
         return outputs if len(keys) > 1 else outputs[0]
 
-    def commit(self, elapsed: Elapsed, logs: Logs):
+    def commit(self, elapsed: Elapsed, logs: LogsLike):
         # convert JAX arrays to numpy arrays to free memory
         logs = jax.tree_map(
-            lambda x: np.asarray(x) if isinstance(x, jnp.ndarray) else x, logs
+            lambda x: np.asarray(x) if isinstance(x, jax.Array) else x, logs
         )
-        if not isinstance(logs, Logs):
-            logs = Logs(logs)
         logs["elapsed"] = elapsed.to_dict()
-        self.append(logs)
 
-
-__all__ = ["Logs", "History"]
+        self.append(Logs(logs))

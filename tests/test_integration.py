@@ -117,7 +117,7 @@ class TestIntegration:
                 loss=loss, logits=logits, labels=batch["label"]
             )
             logs = ciclo.logs()
-            logs.add_stateful_metrics(metrics.compute())
+            logs.add_stateful_metrics(**metrics.compute())
             return logs, state.replace(metrics=metrics)
 
         @jax.jit
@@ -130,7 +130,7 @@ class TestIntegration:
                 loss=loss, logits=logits, labels=batch["label"]
             )
             logs = ciclo.logs()
-            logs.add_stateful_metrics(metrics.compute())
+            logs.add_stateful_metrics(**metrics.compute())
             return logs, state.replace(metrics=metrics)
 
         def reset_metrics(state: TrainState):

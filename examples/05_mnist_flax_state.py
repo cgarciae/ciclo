@@ -51,7 +51,7 @@ class Accuracy(clu.metrics.Accuracy):
 AverageLoss = clu.metrics.Average.from_output("loss")
 
 
-def cross_entropy_loss(preds, target, **kwargs):
+def cross_entropy_loss(*, preds, target, **_):
     return optax.softmax_cross_entropy_with_integer_labels(
         logits=preds, labels=target
     ).mean()

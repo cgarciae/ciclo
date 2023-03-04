@@ -15,6 +15,8 @@ FitInputTasks = Dict[FitScheduleLike, CallbackOrList]
 FitCallback = Any
 
 PREDICT_NAMES = {
+    (ON_PREDICT_STEP := "on_predict_step"),
+    # also support the simple names
     (PREDICT_STEP := "predict_step"),
     # ----------------
     (ON_PREDICT_BATCH_BEGIN := "on_predict_batch_begin"),
@@ -24,6 +26,9 @@ PREDICT_NAMES = {
 }
 
 TEST_NAMES = {
+    (ON_TEST_STEP := "on_test_step"),
+    (ON_RESET_STEP := "on_reset_step"),
+    # also support the simple names
     (TEST_STEP := "test_step"),
     (RESET_STEP := "reset_step"),
     # ----------------
@@ -37,8 +42,11 @@ TEST_NAMES = {
 # there is no ON_EPOCH_BEGIN, instead you can use a combination
 # of ON_TRAIN_BEGIN and ON_EPOCH_END
 FIT_NAMES = {
+    (ON_TRAIN_STEP := "on_train_step"),
+    ON_RESET_STEP,
+    # also support the simple names
     (TRAIN_STEP := "train_step"),
-    (RESET_STEP := "reset_step"),
+    RESET_STEP,
     # ----------------
     (ON_TRAIN_BEGIN := "on_train_begin"),
     (ON_TRAIN_END := "on_train_end"),
@@ -119,11 +127,13 @@ def train_loop(
     train_tasks[schedules.every(1)] = [
         *named_tasks.get(ON_TRAIN_BATCH_BEGIN, []),
         *named_tasks.get(TRAIN_STEP, []),
+        *named_tasks.get(ON_TRAIN_STEP, []),
     ]
 
     if epoch_duration is not None:
         test_tasks = []
         test_tasks += named_tasks.pop(RESET_STEP, [])
+        test_tasks += named_tasks.pop(ON_RESET_STEP, [])
         if test_dataset is not None:
             test_tasks.append(
                 callbacks_lib.inner_loop(
@@ -221,6 +231,7 @@ def test_loop(
     test_tasks[schedules.every(1)] = [
         *named_tasks.get(ON_TEST_BATCH_BEGIN, []),
         *named_tasks.get(TEST_STEP, []),
+        *named_tasks.get(ON_TEST_STEP, []),
         *named_tasks.get(ON_TEST_BATCH_END, []),
     ]
     test_tasks.update(additionl_tasks)
@@ -229,7 +240,9 @@ def test_loop(
         state,
         dataset,
         tasks=test_tasks,
-        on_start=named_tasks.get(ON_TEST_BEGIN, None),
+        on_start=named_tasks.get(ON_TEST_BEGIN, [])
+        + named_tasks.get(RESET_STEP, [])
+        + named_tasks.get(ON_RESET_STEP, []),
         on_end=named_tasks.get(ON_TEST_END, None),
         stop=stop,
         history=history,
@@ -293,6 +306,7 @@ def predict_loop(
     predict_tasks[schedules.every(1)] = [
         *named_tasks.get(ON_PREDICT_BATCH_BEGIN, []),
         *named_tasks.get(PREDICT_STEP, []),
+        *named_tasks.get(ON_PREDICT_STEP, []),
         *named_tasks.get(ON_PREDICT_BATCH_END, []),
     ]
     predict_tasks.update(additionl_tasks)
