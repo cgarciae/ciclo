@@ -7,6 +7,10 @@ nav:
 
 theme:
   name: material
+  favicon: images/cyclone_black.png
+  logo: images/cyclone_white.png
+  palette:
+    primary: teal
 
 markdown_extensions:
   - pymdownx.arithmatex
