@@ -8,7 +8,7 @@ _A functional training loops library for JAX_
 **Features**
 
 ✔️ Training utilities <br>
-🌀 Loop language <br>
+✔️ Loop language <br>
 ✔️ Predefined Loops <br>
 🧪 Managed API (simplified training + parallelism support) [experimental] <br>
 🧪 Framework support (predifined states) [experimental] <br>
