@@ -10,8 +10,8 @@ _A functional training loops library for JAX_
 ✔️ Training utilities <br>
 ✔️ Loop language <br>
 ✔️ Predefined Loops <br>
-🧪 Managed API (simplified training + parallelism support) [experimental] <br>
-🧪 Framework support (predifined states) [experimental] <br>
+🧪 Managed API (simplified training + parallelism support) [**experimental**] <br>
+🧪 Framework support (predifined states) [**experimental**] <br>
 
 ## Status
 Ciclo is still in early development, the API is subject to change, expect things to break. If you are interested in contributing, please reach out.
