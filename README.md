@@ -151,6 +151,8 @@ To make JAX accessible for begginers, `ciclo` plans to provide a set of predefin
 
 ```python
 import flax.linen as nn
+from jax_metrics.losses import Crossentropy
+from jax_metrics.metrics import Accuracy
 
 model = nn.Sequential([
     lambda x: x.reshape((x.shape[0], -1)) / 255.0,
@@ -162,8 +164,8 @@ state = ciclo.create_flax_state(
     model,
     inputs=jnp.empty((1, 28, 28, 1)),
     tx=optax.adamw(1e-3),
-    losses={"loss": cross_entropy_loss},
-    metrics={"accuracy": Accuracy, "avg_loss": AverageLoss},
+    losses={"loss": Crossentropy()}, # any Callable[..., jax.Array]
+    metrics={"accuracy": Accuracy()}, # supports Callables, jax_metrics, or clu metrics
     strategy="jit", # "data-parallel" or "eager"
 )
 ```
