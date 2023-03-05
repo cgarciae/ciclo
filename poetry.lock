@@ -839,6 +839,22 @@ files = [
 ]
 
 [[package]]
+name = "equinox"
+version = "0.10.1"
+description = "PyTorch-like neural networks in JAX"
+category = "dev"
+optional = false
+python-versions = "~=3.8"
+files = [
+    {file = "equinox-0.10.1-py3-none-any.whl", hash = "sha256:062320ba04f0307f66853b9b78a023c728073fecbd43aeede21c9c65ccced95f"},
+    {file = "equinox-0.10.1.tar.gz", hash = "sha256:e3af1432e3909add3c6e5d0c0e6c51cde7574dfaf1154cfd9f9f035fddb54df4"},
+]
+
+[package.dependencies]
+jax = ">=0.4.3"
+jaxtyping = ">=0.2.12"
+
+[[package]]
 name = "etils"
 version = "1.0.0"
 description = "Collection of common python utils"
@@ -872,6 +888,21 @@ etree-dm = ["dm-tree", "etils[etree]"]
 etree-jax = ["etils[etree]", "jax[cpu]"]
 etree-tf = ["etils[etree]", "tensorflow"]
 lazy-imports = ["etils[ecolab]"]
+
+[[package]]
+name = "exceptiongroup"
+version = "1.1.0"
+description = "Backport of PEP 654 (exception groups)"
+category = "dev"
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "exceptiongroup-1.1.0-py3-none-any.whl", hash = "sha256:327cbda3da756e2de031a3107b81ab7b3770a602c4d16ca618298c526f4bec1e"},
+    {file = "exceptiongroup-1.1.0.tar.gz", hash = "sha256:bcb67d800a4497e1b404c2dd44fca47d3b7a5e5433dbab67f96c1a685cdfdf23"},
+]
+
+[package.extras]
+test = ["pytest (>=6)"]
 
 [[package]]
 name = "executing"
@@ -1457,6 +1488,23 @@ files = [
 [package.dependencies]
 numpy = ">=1.20"
 scipy = ">=1.5"
+
+[[package]]
+name = "jaxtyping"
+version = "0.2.13"
+description = "Type annotations and runtime checking for shape and dtype of JAX arrays, and PyTrees."
+category = "dev"
+optional = false
+python-versions = "~=3.8"
+files = [
+    {file = "jaxtyping-0.2.13-py3-none-any.whl", hash = "sha256:4d7ee005eebd366e6e3ea5133d4b10fd6f9ee779bc2312c1eff84cca59061570"},
+    {file = "jaxtyping-0.2.13.tar.gz", hash = "sha256:1e8a9ae5bd29c0e796a0f856362c81acadca0df863b471306b282b6403d09896"},
+]
+
+[package.dependencies]
+numpy = ">=1.20.0"
+typeguard = ">=2.13.3"
+typing-extensions = ">=3.7.4.1"
 
 [[package]]
 name = "jedi"
@@ -2818,18 +2866,6 @@ files = [
 tests = ["pytest"]
 
 [[package]]
-name = "py"
-version = "1.11.0"
-description = "library with cross-python path, ini-parsing, io, code, log facilities"
-category = "dev"
-optional = false
-python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*"
-files = [
-    {file = "py-1.11.0-py2.py3-none-any.whl", hash = "sha256:607c53218732647dff4acdfcd50cb62615cedf612e72d1724fb1a0cc6405b378"},
-    {file = "py-1.11.0.tar.gz", hash = "sha256:51c75c4126074b472f746a24399ad32f6053d1b34b68d2fa41e558e6f4a98719"},
-]
-
-[[package]]
 name = "pyasn1"
 version = "0.4.8"
 description = "ASN.1 types and codecs"
@@ -2885,18 +2921,19 @@ plugins = ["importlib-metadata"]
 
 [[package]]
 name = "pymdown-extensions"
-version = "9.9.2"
+version = "9.10"
 description = "Extension pack for Python Markdown."
 category = "dev"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "pymdown_extensions-9.9.2-py3-none-any.whl", hash = "sha256:c3d804eb4a42b85bafb5f36436342a5ad38df03878bb24db8855a4aa8b08b765"},
-    {file = "pymdown_extensions-9.9.2.tar.gz", hash = "sha256:ebb33069bafcb64d5f5988043331d4ea4929325dc678a6bcf247ddfcf96499f8"},
+    {file = "pymdown_extensions-9.10-py3-none-any.whl", hash = "sha256:31eaa76ce6f96aabfcea98787c2fff2c5c0611b20a53a94213970cfbf05f02b8"},
+    {file = "pymdown_extensions-9.10.tar.gz", hash = "sha256:562c38eee4ce3f101ce631b804bfc2177a8a76c7e4dc908871fb6741a90257a7"},
 ]
 
 [package.dependencies]
 markdown = ">=3.2"
+pyyaml = "*"
 
 [[package]]
 name = "pyparsing"
@@ -2952,24 +2989,24 @@ files = [
 
 [[package]]
 name = "pytest"
-version = "7.1.3"
+version = "7.2.2"
 description = "pytest: simple powerful testing with Python"
 category = "dev"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "pytest-7.1.3-py3-none-any.whl", hash = "sha256:1377bda3466d70b55e3f5cecfa55bb7cfcf219c7964629b967c37cf0bda818b7"},
-    {file = "pytest-7.1.3.tar.gz", hash = "sha256:4f365fec2dff9c1162f834d9f18af1ba13062db0c708bf7b946f8a5c76180c39"},
+    {file = "pytest-7.2.2-py3-none-any.whl", hash = "sha256:130328f552dcfac0b1cec75c12e3f005619dc5f874f0a06e8ff7263f0ee6225e"},
+    {file = "pytest-7.2.2.tar.gz", hash = "sha256:c99ab0c73aceb050f68929bc93af19ab6db0558791c6a0715723abe9d0ade9d4"},
 ]
 
 [package.dependencies]
 attrs = ">=19.2.0"
 colorama = {version = "*", markers = "sys_platform == \"win32\""}
+exceptiongroup = {version = ">=1.0.0rc8", markers = "python_version < \"3.11\""}
 iniconfig = "*"
 packaging = "*"
 pluggy = ">=0.12,<2.0"
-py = ">=1.8.2"
-tomli = ">=1.0.0"
+tomli = {version = ">=1.0.0", markers = "python_version < \"3.11\""}
 
 [package.extras]
 testing = ["argcomplete", "hypothesis (>=3.56)", "mock", "nose", "pygments (>=2.7.2)", "requests", "xmlschema"]
@@ -3900,6 +3937,22 @@ docs = ["myst-parser", "pydata-sphinx-theme", "sphinx"]
 test = ["argcomplete (>=2.0)", "pre-commit", "pytest", "pytest-mock"]
 
 [[package]]
+name = "typeguard"
+version = "2.13.3"
+description = "Run-time type checker for Python"
+category = "dev"
+optional = false
+python-versions = ">=3.5.3"
+files = [
+    {file = "typeguard-2.13.3-py3-none-any.whl", hash = "sha256:5e3e3be01e887e7eafae5af63d1f36c849aaa94e3a0112097312aabfa16284f1"},
+    {file = "typeguard-2.13.3.tar.gz", hash = "sha256:00edaa8da3a133674796cf5ea87d9f4b4c367d77476e185e80251cc13dfbb8c4"},
+]
+
+[package.extras]
+doc = ["sphinx-autodoc-typehints (>=1.2.0)", "sphinx-rtd-theme"]
+test = ["mypy", "pytest", "typing-extensions"]
+
+[[package]]
 name = "typing-extensions"
 version = "4.5.0"
 description = "Backported and Experimental Type Hints for Python 3.7+"
@@ -4193,4 +4246,4 @@ testing = ["big-O", "flake8 (<5)", "jaraco.functools", "jaraco.itertools", "more
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.8,<3.11"
-content-hash = "187a0c1082a7a2d8fe63394354010a141d0105f26b89688cc0f33d8617ce91d8"
+content-hash = "943c24f1671b390dbb001c637c5bb64bb3372bce876d94da1dde4b4b9fb39185"

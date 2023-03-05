@@ -222,9 +222,15 @@ This approach allows for fine-grained control over the training process and enab
 
 For a more in-depth look at how to use `ciclo`, check out our [examples](./examples) folder which contains a set of python scripts that demonstrate how to use `ciclo` to train models using different APIs.
 
-* [00 Linear Regression](https://github.com/cgarciae/ciclo/blob/main/examples/00_linear_regression_pure_jax.py) (pure jax)
-* [01 Simple MNIST](https://github.com/cgarciae/ciclo/blob/main/examples/01_mnist_simple.py)
-* [02 Using train_loop](https://github.com/cgarciae/ciclo/blob/main/examples/02_mnist_train_loop.py)
-* [03 Manual Iteration](https://github.com/cgarciae/ciclo/blob/main/examples/03_mnist_manual_iteration.py)
-* [04 Managed API](https://github.com/cgarciae/ciclo/blob/main/examples/04_mnist_managed_api.py)
-* [05 Using create_flax_state](https://github.com/cgarciae/ciclo/blob/main/examples/05_mnist_flax_state.py)
+#### Pure JAX
+* [00 Linear Regression](https://github.com/cgarciae/ciclo/blob/main/examples/basic/00_linear_regression_pure_jax.py)
+
+#### Flax
+* [01 Simple MNIST](https://github.com/cgarciae/ciclo/blob/main/examples/flax/01_mnist_simple.py)
+* [02 Using train_loop](https://github.com/cgarciae/ciclo/blob/main/examples/flax/02_mnist_train_loop.py)
+* [03 Manual Iteration](https://github.com/cgarciae/ciclo/blob/main/examples/flax/03_mnist_manual_iteration.py)
+* [04 Managed API](https://github.com/cgarciae/ciclo/blob/main/examples/flax/04_mnist_managed_api.py)
+* [05 Using create_flax_state](https://github.com/cgarciae/ciclo/blob/main/examples/flax/05_mnist_flax_state.py)
+
+#### Equinox
+* [Simple MNIST](https://github.com/cgarciae/ciclo/blob/main/examples/equinox/01_mnist_equinox.py)
