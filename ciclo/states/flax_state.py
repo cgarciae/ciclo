@@ -1,6 +1,4 @@
-import dataclasses
 import inspect
-from os import sep
 from typing import (
     Any,
     Callable,
@@ -20,10 +18,11 @@ from typing import (
 import flax.linen as nn
 import jax
 import jax.numpy as jnp
+import jax_metrics as jm
 import optax
 from flax import struct, traverse_util
 from flax.core import FrozenDict
-from flax.core.scope import CollectionFilter, DenyList, FrozenVariableDict, VariableDict
+from flax.core.scope import CollectionFilter, DenyList, FrozenVariableDict
 
 import ciclo
 from ciclo import managed
@@ -65,10 +64,8 @@ class Metrics(struct.PyTreeNode, MetricLike):
         for name, metric in self.metrics.items():
             if isinstance(metric, MetricLike):
                 metrics[name] = metric.reset()
-            elif isinstance(metric, CluMetric):
-                metrics[name] = metric.empty()
             else:
-                raise ValueError(f"Invalid metric type for {name}: {type(metric)}")
+                metrics[name] = metric.empty()
 
         return self.replace(metrics=metrics)
 
@@ -77,10 +74,18 @@ class Metrics(struct.PyTreeNode, MetricLike):
         for name, metric in self.metrics.items():
             if isinstance(metric, MetricLike):
                 metrics[name] = metric.update(**kwargs)
-            elif isinstance(metric, CluMetric):
-                metrics[name] = metric.from_model_output(**kwargs)
             else:
-                raise ValueError(f"Invalid metric type for {name}: {type(metric)}")
+                metrics[name] = metric.merge(metric.from_model_output(**kwargs))
+
+        return self.replace(metrics=metrics)
+
+    def batch_updates(self, **kwargs) -> "Metrics":
+        metrics = {}
+        for name, metric in self.metrics.items():
+            if isinstance(metric, MetricLike):
+                metrics[name] = metric.batch_updates(**kwargs)
+            else:
+                metrics[name] = metric.from_model_output(**kwargs)
 
         return self.replace(metrics=metrics)
 
@@ -90,40 +95,30 @@ class Metrics(struct.PyTreeNode, MetricLike):
             other_metric = other.metrics[name]
             if type(metric) != type(other_metric):
                 raise ValueError(
-                    f"Metric {name} has different types: {type(metric)} and {type(other_metric)}"
+                    f"Metric {name} has different types: {type(metric)} and "
+                    f"{type(other_metric)}"
                 )
+
             if isinstance(metric, MetricLike):
                 assert isinstance(other_metric, MetricLike)
                 metrics[name] = metric.merge(other_metric)
-            elif isinstance(metric, CluMetric):
+            else:
                 assert isinstance(other_metric, CluMetric)
                 metrics[name] = metric.merge(other_metric)
-            else:
-                raise ValueError(f"Invalid metric type for {name}: {type(metric)}")
 
         return self.replace(metrics=metrics)
 
     def compute(self):
         logs = {}
         for name, metric in self.metrics.items():
-            if isinstance(metric, MetricLike):
-                logs[name] = metric.compute()
-            elif isinstance(metric, CluMetric):
-                logs[name] = metric.compute()
-            else:
-                raise ValueError(f"Invalid metric type for {name}: {type(metric)}")
+            logs[name] = metric.compute()
 
         return logs
 
-    def aggregate(self):
+    def reduce(self):
         metrics = {}
         for name, metric in self.metrics.items():
-            if isinstance(metric, MetricLike):
-                metrics[name] = metric.aggregate()
-            elif isinstance(metric, CluMetric):
-                metrics[name] = metric.reduce()
-            else:
-                raise ValueError(f"Invalid metric type for {name}: {type(metric)}")
+            metrics[name] = metric.reduce()
 
         return self.replace(metrics=metrics)
 
@@ -146,6 +141,7 @@ class FlaxState(Generic[M], managed.ManagedState):
     method_train: Union[str, Callable[..., Any]] = static_field()
     method_eval: Union[str, Callable[..., Any]] = static_field()
     logs_full_path: bool = static_field()
+    keep_collections: Tuple[str, ...] = static_field()
 
     @property
     def module(self) -> M:
@@ -202,11 +198,13 @@ class FlaxState(Generic[M], managed.ManagedState):
 
     @managed.train_step
     def train_step(self, batch, elapsed: Elapsed):
-        return self._step(batch, elapsed, training=True)
+        logs, state = self._step(batch, elapsed, training=True)
+        return logs, state
 
     @managed.step
     def test_step(self, batch, elapsed: Elapsed):
-        return self._step(batch, elapsed, training=False)
+        logs, state = self._step(batch, elapsed, training=False)
+        return logs, state
 
     @managed.step
     def predict_step(self, batch, elapsed: Elapsed):
@@ -227,7 +225,8 @@ class FlaxState(Generic[M], managed.ManagedState):
 
     @managed.step
     def reset_step(self):
-        return self.replace(stateful_metrics=self.stateful_metrics.reset())
+        stateful_metrics = self.stateful_metrics.reset()
+        return self.replace(stateful_metrics=stateful_metrics)
 
     def _step(self, batch, elapsed: Elapsed, training: bool):
         inputs, labels, sample_weight = unpack_x_y_sample_weight(batch)
@@ -235,6 +234,7 @@ class FlaxState(Generic[M], managed.ManagedState):
         key = jax.random.fold_in(self.key, elapsed.steps)
         seq_key, pred_key = jax.random.split(key, 2)
         preds, self = self.apply(pred_key, inputs, training=training)
+        variables = self.variables
 
         if not isinstance(labels, Mapping):
             label_args = dict(target=labels)
@@ -262,15 +262,21 @@ class FlaxState(Generic[M], managed.ManagedState):
         for name, loss in self.losses.items():
             logs.add_loss(name, loss(**arguments))
 
-        for name, loss in self.get_aux_losses().items():
-            logs.add_loss(name, loss)
+        if "losses" in variables:
+            aux_losses = flatten_names_unique(
+                variables["losses"], only_last=not self.logs_full_path
+            )
+            for name, loss in aux_losses.items():
+                loss = jnp.asarray(loss)
+                logs.add_loss(name, loss)
 
         if "losses" not in logs:
             raise ValueError("No losses were added to the logs.")
-        else:
-            for name, loss in logs["losses"].items():
-                if name not in arguments:
-                    arguments[name] = loss
+
+        # Add losses to metric arguments
+        for name, loss in logs.losses.items():
+            if name not in arguments:
+                arguments[name] = loss
 
         for name, metric in self.stateless_metrics.items():
             if callable(metric):
@@ -281,35 +287,31 @@ class FlaxState(Generic[M], managed.ManagedState):
                 )
 
         logs.add_stateful_metric(
-            "stateful_metrics", self.stateful_metrics.update(**arguments)
+            "stateful_metrics", self.stateful_metrics.batch_updates(**arguments)
         )
 
-        for name, metric in self.get_aux_metrics().items():
-            logs.add_metric(name, metric)
+        if "metrics" in variables:
+            aux_metrics = flatten_names_unique(
+                variables["metrics"], only_last=not self.logs_full_path
+            )
+            for name, metric in aux_metrics.items():
+                metric = jnp.asarray(metric)
+                logs.add_metric(name, metric)
 
-        return logs, self
+        # Filter variables
+        variables = FrozenDict(
+            {
+                collection: variables[collection]
+                for collection in variables
+                if collection in self.keep_collections
+            }
+        )
+
+        return logs, self.replace(variables=variables)
 
     # ---------------------------------------------------------------------------------
     # HighLevel API helpers
     # ---------------------------------------------------------------------------------
-
-    def get_aux_losses(self) -> Dict[str, jax.Array]:
-        if "losses" in self.variables:
-            losses = flatten_names_unique(
-                self.variables["losses"], only_last=not self.logs_full_path
-            )
-            return losses
-        else:
-            return {}
-
-    def get_aux_metrics(self) -> Dict[str, jax.Array]:
-        if "metrics" in self.variables:
-            metrics = flatten_names_unique(
-                self.variables["metrics"], only_last=not self.logs_full_path
-            )
-            return metrics
-        else:
-            return {}
 
 
 def init_module(
@@ -358,6 +360,7 @@ def create_flax_state(
     method_eval: Union[str, Callable[..., Any]] = "__call__",
     init_training_value: bool = True,
     logs_full_path: bool = False,
+    keep_collections: Sequence[str] = (),
     strategy: Union[Strategy, str] = "jit",
 ) -> FlaxState[M]:
     if key is None:
@@ -367,18 +370,7 @@ def create_flax_state(
     if metrics is None:
         metrics = {}
 
-    stateful_metrics = {}
-    stateless_metrics = {}
-
-    for name, metric in metrics.items():
-        if isinstance(metric, (CluMetric, MetricLike)):
-            stateful_metrics[name] = metric
-        elif issubclass(metric, CluMetric):
-            stateful_metrics[name] = metric.empty()
-        elif callable(metric):
-            stateless_metrics[name] = metric
-        else:
-            raise ValueError(f"Invalid metric type for {name}: {type(metric)}")
+    keep_collections = tuple(keep_collections)
 
     variables = init_module(
         module=module,
@@ -398,6 +390,46 @@ def create_flax_state(
         variables, batch_stats = variables.pop("batch_stats")
     else:
         batch_stats = None
+
+    # Create metrics
+    stateful_metrics = {}
+    stateless_metrics = {}
+
+    # Split metrics into stateful and stateless metrics
+    for name, metric in metrics.items():
+        if isinstance(metric, (CluMetric, MetricLike)):
+            stateful_metrics[name] = metric
+        elif issubclass(metric, CluMetric):
+            stateful_metrics[name] = metric.empty()
+        elif callable(metric):
+            stateless_metrics[name] = metric
+        else:
+            raise ValueError(f"Invalid metric type for {name}: {type(metric)}")
+
+    # Add stateful metrics for auxiliary losses
+    if "losses" in variables:
+        aux_losses = flatten_names_unique(
+            variables["losses"], only_last=not logs_full_path
+        )
+        for name in aux_losses.keys():
+            avg_name = f"avg_{name}"
+            if avg_name not in stateful_metrics:
+                stateful_metrics[avg_name] = jm.metrics.Mean().from_argument(name)
+
+    # Add stateful metrics for losses
+    for name in losses.keys():
+        avg_name = f"avg_{name}"
+        if avg_name not in stateful_metrics:
+            stateful_metrics[avg_name] = jm.metrics.Mean().from_argument(name)
+
+    # Filter variables
+    variables = FrozenDict(
+        {
+            collection: variables[collection]
+            for collection in variables
+            if collection in keep_collections
+        }
+    )
 
     state = FlaxState.create(
         # TrainState
@@ -421,6 +453,7 @@ def create_flax_state(
         method_train=method_train,
         method_eval=method_eval,
         logs_full_path=logs_full_path,
+        keep_collections=keep_collections,
     )
     return state
 

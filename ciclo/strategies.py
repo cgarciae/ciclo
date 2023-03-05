@@ -227,10 +227,8 @@ class DataParallel(Strategy):
     ) -> Metric:
         # metrics = jax.lax.stop_gradient(metrics)
         metric = jax.lax.all_gather(metric, axis_name=self.axis_name)
-        if isinstance(metric, CluMetric):
+        if isinstance(metric, (CluMetric, MetricLike)):
             metric = metric.reduce()
-        elif isinstance(metric, MetricLike):
-            metric = metric.aggregate()
         else:
             raise ValueError(f"Unknown metric type {type(metric)}")
         return metric

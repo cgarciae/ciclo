@@ -6,6 +6,7 @@ from time import time
 import flax.linen as nn
 import jax
 import jax.numpy as jnp
+import jax_metrics as jm
 import numpy as np
 import optax
 from clu.metrics import Accuracy, Average, Collection
@@ -23,6 +24,14 @@ def get_dataset(batch_size: int):
             "image": np.empty((batch_size, input_shape)),
             "label": np.random.randint(0, 10, size=(batch_size,)),
         }
+
+
+def get_tuple_dataset(batch_size: int):
+    while True:
+        yield (
+            np.empty((batch_size, input_shape)),
+            np.random.randint(0, 10, size=(batch_size,)),
+        )
 
 
 class TestIntegration:
@@ -187,3 +196,79 @@ class TestIntegration:
             assert len(history) == total_steps
             assert len(loss) == len(accuracy) == total_steps
             assert steps == list(range(total_steps))
+
+    def test_create_flax_state(self):
+        batch_size = 3
+        total_steps = 3 * 4
+        steps_per_epoch = 3
+        test_steps = 2
+
+        # Define model
+        class Linear(nn.Module):
+            @nn.compact
+            def __call__(self, x):
+                x = nn.Dense(features=10)(x)
+                self.put_variable("losses", "a", jnp.array(1.0))
+                self.put_variable("metrics", "b", jnp.array(2.0))
+                return x
+
+        # Initialize state
+        model = Linear()
+        state = ciclo.create_flax_state(
+            model,
+            inputs=jnp.empty((1, input_shape)),
+            tx=optax.adamw(1e-3),
+            losses={"loss": jm.losses.Crossentropy()},
+            metrics={"accuracy": jm.metrics.Accuracy()},
+            strategy="jit",
+        )
+        state, history, _ = ciclo.train_loop(
+            state,
+            get_tuple_dataset(batch_size),
+            callbacks=[
+                ciclo.keras_bar(total=total_steps),
+                ciclo.checkpoint(
+                    f"logdir/{Path(__file__).stem}/{int(time())}",
+                    monitor="accuracy_test",
+                    mode="max",
+                ),
+            ],
+            test_dataset=lambda: get_tuple_dataset(batch_size),
+            epoch_duration=steps_per_epoch,
+            test_duration=test_steps,
+            stop=total_steps,
+        )
+
+        (
+            steps,
+            avg_loss,
+            accuracy,
+            avg_loss_test,
+            accuracy_test,
+            avg_a,
+            b,
+            avg_a_test,
+            b_test,
+        ) = history.collect(
+            "steps",
+            "avg_loss",
+            "accuracy",
+            "avg_loss_test",
+            "accuracy_test",
+            "avg_a",
+            "b",
+            "avg_a_test",
+            "b_test",
+        )
+
+        total_logs = total_steps // steps_per_epoch
+
+        assert len(steps) == total_logs
+        assert len(avg_loss) == total_logs
+        assert len(accuracy) == total_logs
+        assert len(avg_loss_test) == total_logs
+        assert len(accuracy_test) == total_logs
+        assert len(avg_a) == total_logs
+        assert len(b) == total_logs
+        assert len(avg_a_test) == total_logs
+        assert len(b_test) == total_logs

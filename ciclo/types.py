@@ -40,6 +40,10 @@ class MetricLike(Protocol):
         ...
 
     @abstractmethod
+    def batch_updates(self: A, **kwargs) -> A:
+        ...
+
+    @abstractmethod
     def merge(self: A, other: A) -> A:
         ...
 
@@ -48,5 +52,5 @@ class MetricLike(Protocol):
         ...
 
     @abstractmethod
-    def aggregate(self: A) -> A:
+    def reduce(self: A) -> A:
         ...

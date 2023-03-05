@@ -5,6 +5,7 @@ from time import time
 import flax.linen as nn
 import jax
 import jax.numpy as jnp
+import jax_metrics as jm
 import matplotlib.pyplot as plt
 import numpy as np
 import optax
@@ -46,7 +47,7 @@ class Metrics(Collection):
 
 
 class TrainState(train_state.TrainState):
-    metrics: Metrics
+    metrics: jm.Metrics
 
 
 @jax.jit
@@ -60,7 +61,7 @@ def train_step(state: TrainState, batch):
 
     (loss, logits), grads = jax.value_and_grad(loss_fn, has_aux=True)(state.params)
     state = state.apply_gradients(grads=grads)
-    metrics = state.metrics.update(loss=loss, logits=logits, labels=batch["label"])
+    metrics = state.metrics.update(loss=loss, preds=logits, target=batch["label"])
     logs = ciclo.logs()
     logs.add_stateful_metrics(**metrics.compute())
     return logs, state.replace(metrics=metrics)
@@ -72,14 +73,14 @@ def test_step(state: TrainState, batch):
     loss = optax.softmax_cross_entropy_with_integer_labels(
         logits=logits, labels=batch["label"]
     ).mean()
-    metrics = state.metrics.update(loss=loss, logits=logits, labels=batch["label"])
+    metrics = state.metrics.update(loss=loss, preds=logits, target=batch["label"])
     logs = ciclo.logs()
     logs.add_stateful_metrics(**metrics.compute())
     return logs, state.replace(metrics=metrics)
 
 
 def reset_step(state: TrainState):
-    return state.replace(metrics=state.metrics.empty())
+    return state.replace(metrics=state.metrics.reset())
 
 
 # Initialize state
@@ -89,7 +90,12 @@ state = TrainState.create(
     apply_fn=model.apply,
     params=variables["params"],
     tx=optax.adamw(1e-3),
-    metrics=Metrics.empty(),
+    metrics=jm.Metrics(
+        {
+            "accuracy": jm.metrics.Accuracy(),
+            "loss": jm.metrics.Mean().from_argument("loss"),
+        }
+    ),
 )
 
 # training loop

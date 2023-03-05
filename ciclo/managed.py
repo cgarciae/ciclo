@@ -162,25 +162,15 @@ class ManagedStep(LoopCallbackBase[S]):
                 stateful_metrics = logs["stateful_metrics"]
                 assert isinstance(stateful_metrics, MutableMapping)
                 for key, value in list(stateful_metrics.items()):
-                    if isinstance(value, CluMetric):
+                    if isinstance(value, (CluMetric, MetricLike)):
                         metric = getattr(state, key)
-                        assert isinstance(metric, CluMetric)
+                        assert isinstance(metric, (CluMetric, MetricLike))
                         value = strategy.handle_metric(value)
                         metric = metric.merge(value)
                         state = state.replace(**{key: metric})
                         metric_value = metric.compute()
                         if isinstance(metric_value, Mapping):
-                            stateful_metrics.update(metric_value)
-                        else:
-                            stateful_metrics[key] = metric_value
-                    elif isinstance(value, MetricLike):
-                        metric = getattr(state, key)
-                        assert isinstance(metric, MetricLike)
-                        value = strategy.handle_metric(value)
-                        metric = metric.merge(value)
-                        state = state.replace(**{key: metric})
-                        metric_value = metric.compute()
-                        if isinstance(metric_value, Mapping):
+                            del stateful_metrics[key]
                             stateful_metrics.update(metric_value)
                         else:
                             stateful_metrics[key] = metric_value
