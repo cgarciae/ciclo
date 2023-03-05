@@ -505,6 +505,8 @@ Once you've installed Ciclo, you can import it into your Python script:</p>
 <h3 id="framework-support">Framework Support 🧪</h3>
 <p>To make JAX accessible for begginers, <code>ciclo</code> plans to provide a set of predefined state types for common frameworks, such as <code>flax</code>, <code>haiku</code>, and <code>equinox</code> (for now only <code>flax</code> is supported). These types are based on <code>ManagedState</code> and make it easy to perform tasks like training, evaluation, and inference without having to have a deep understanding of either the framework or JAX. Similar to Keras you just provide a model, an optimizer, some losses and metrics:</p>
 <div class="highlight"><pre><span></span><code><span class="kn">import</span> <span class="nn">flax.linen</span> <span class="k">as</span> <span class="nn">nn</span>
+<span class="kn">from</span> <span class="nn">jax_metrics.losses</span> <span class="kn">import</span> <span class="n">Crossentropy</span>
+<span class="kn">from</span> <span class="nn">jax_metrics.metrics</span> <span class="kn">import</span> <span class="n">Accuracy</span>
 
 <span class="n">model</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Sequential</span><span class="p">([</span>
     <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="o">.</span><span class="n">reshape</span><span class="p">((</span><span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="o">-</span><span class="mi">1</span><span class="p">))</span> <span class="o">/</span> <span class="mf">255.0</span><span class="p">,</span>
@@ -516,8 +518,8 @@ Once you've installed Ciclo, you can import it into your Python script:</p>
     <span class="n">model</span><span class="p">,</span>
     <span class="n">inputs</span><span class="o">=</span><span class="n">jnp</span><span class="o">.</span><span class="n">empty</span><span class="p">((</span><span class="mi">1</span><span class="p">,</span> <span class="mi">28</span><span class="p">,</span> <span class="mi">28</span><span class="p">,</span> <span class="mi">1</span><span class="p">)),</span>
     <span class="n">tx</span><span class="o">=</span><span class="n">optax</span><span class="o">.</span><span class="n">adamw</span><span class="p">(</span><span class="mf">1e-3</span><span class="p">),</span>
-    <span class="n">losses</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;loss&quot;</span><span class="p">:</span> <span class="n">cross_entropy_loss</span><span class="p">},</span>
-    <span class="n">metrics</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;accuracy&quot;</span><span class="p">:</span> <span class="n">Accuracy</span><span class="p">,</span> <span class="s2">&quot;avg_loss&quot;</span><span class="p">:</span> <span class="n">AverageLoss</span><span class="p">},</span>
+    <span class="n">losses</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;loss&quot;</span><span class="p">:</span> <span class="n">Crossentropy</span><span class="p">()},</span> <span class="c1"># any Callable[..., jax.Array]</span>
+    <span class="n">metrics</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;accuracy&quot;</span><span class="p">:</span> <span class="n">Accuracy</span><span class="p">()},</span> <span class="c1"># supports Callables, jax_metrics, or clu metrics</span>
     <span class="n">strategy</span><span class="o">=</span><span class="s2">&quot;jit&quot;</span><span class="p">,</span> <span class="c1"># &quot;data-parallel&quot; or &quot;eager&quot;</span>
 <span class="p">)</span>
 </code></pre></div>
