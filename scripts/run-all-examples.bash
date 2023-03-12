@@ -1,9 +1,9 @@
 set -e
 poetry shell
 
-for f in $(ls examples/ | grep '\.py'); do
+for f in $(find examples -name "*.py"); do
     echo -e "\n---------------------------------"
-    echo "examples/$f"
+    echo "$f"
     echo "---------------------------------"
-    python "examples/$f"
+    python "$f"
 done

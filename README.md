@@ -3,7 +3,7 @@
 # 🌀 Ciclo
 _A functional training loops library for JAX_
 
-`ciclo` provides a set of utilities and abstractions to build complex training loops with any JAX framework. `ciclo` defines a set of building blocks that naturally compose together and scale up to build higher-level abstractions.
+`ciclo` provides a set of utilities and abstractions to build complex training loops with any JAX framework. `ciclo` defines a set of building blocks that naturally compose together and scale up to build higher-level abstractions, ranging from low-level custom training loops to Keras-like training APIs.
 
 **Features**
 

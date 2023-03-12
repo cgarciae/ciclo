@@ -92,7 +92,7 @@ state, history, *_ = ciclo.loop(
     ds_train.as_numpy_iterator(),
     {
         **train_step,
-        ciclo.every(eval_steps, steps_offset=1): [
+        ciclo.after(1).every(eval_steps): [
             reset_metrics,
             ciclo.inner_loop(
                 "valid",

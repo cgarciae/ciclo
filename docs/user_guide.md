@@ -62,7 +62,7 @@ def schedule(elapsed: Elapsed) -> bool
 ciclo.every(steps=10) # by steps
 ciclo.every(samples=10) # by samples
 ciclo.every(time=10) # by time (seconds)
-ciclo.every(steps=20, steps_offset=5) # by steps with offset
+ciclo.after(steps=5).every(steps=20) # by steps with offset
 ```
 
 ### Callbacks

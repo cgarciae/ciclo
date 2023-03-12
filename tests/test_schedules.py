@@ -34,7 +34,7 @@ class TestSchedules:
                 assert not schedule(elapsed)
 
     def test_every_offset(self):
-        schedule = ciclo.every(steps=5, steps_offset=3)
+        schedule = ciclo.after(steps=3).every(steps=5)
         dataset = ciclo.elapse(get_fake_dataset(10, (2, 3)))
 
         for i, (elapsed, batch) in enumerate(dataset):

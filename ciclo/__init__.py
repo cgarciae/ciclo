@@ -26,6 +26,7 @@ from .loops.common import predict_loop as predict_loop
 from .loops.common import test_loop as test_loop
 from .loops.common import train_loop as train_loop
 from .loops.loop import LoopCallbackBase, LoopElement, LoopState, loop
+from .schedules import after as after
 from .schedules import always as always
 from .schedules import every as every
 from .schedules import never as never
@@ -59,6 +60,7 @@ __all__ = [
     "early_stopping",
     "elapse",
     "every",
+    "after",
     "get_strategy",
     "history",
     "inner_loop",
