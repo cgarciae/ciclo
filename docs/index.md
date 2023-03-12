@@ -3,7 +3,7 @@
 # 🌀 Ciclo
 _A functional training loops library for JAX_
 
-`ciclo` provides a set of utilities and abstractions to build complex training loops with any JAX framework. `ciclo` defines a set of building blocks that naturally compose together and scale up to build higher-level abstractions.
+`ciclo` provides a set of utilities and abstractions to build complex training loops with any JAX framework. `ciclo` defines a set of building blocks that naturally compose together and scale up to build higher-level abstractions, ranging from low-level custom training loops to Keras-like training APIs.
 
 **Features**
 
@@ -107,7 +107,7 @@ state, history, elapsed = ciclo.train_loop(
 ```
 
 ### Managed API 🧪
-The `managed` API aims to simplify the process of creating JAX programs for common patterns, such as `jit`, data parallelism with `pmap`, etc. To use this API, you need to define a compatible state type, which can be easily achieved by inheriting from `managed.ManagedState`.
+The `managed` API aims to simplify the process of creating JAX programs for common patterns, such as `jit`, data parallelism with `pmap`, etc. To use this API, you need to define a compatible state type, which can be easily achieved by creating an instance of `managed.ManagedState` or a subclass of it.
 
 ```python
 from ciclo import managed
@@ -231,6 +231,9 @@ For a more in-depth look at how to use `ciclo`, check out our [examples](./examp
 * [03 Manual Iteration](https://github.com/cgarciae/ciclo/blob/main/examples/flax/03_mnist_manual_iteration.py)
 * [04 Managed API](https://github.com/cgarciae/ciclo/blob/main/examples/flax/04_mnist_managed_api.py)
 * [05 Using create_flax_state](https://github.com/cgarciae/ciclo/blob/main/examples/flax/05_mnist_flax_state.py)
+
+### Haiku
+* [Simple MNIST](https://github.com/cgarciae/ciclo/blob/main/examples/haiku/01_mnist_haiku.py)
 
 ### Equinox
 * [Simple MNIST](https://github.com/cgarciae/ciclo/blob/main/examples/equinox/01_mnist_equinox.py)
