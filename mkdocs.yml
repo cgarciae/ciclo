@@ -11,6 +11,8 @@ theme:
   logo: images/cyclone_white.png
   palette:
     primary: teal
+  icon:
+    repo: fontawesome/brands/github
 
 markdown_extensions:
   - pymdownx.arithmatex
@@ -29,3 +31,6 @@ plugins:
 
 extra_css:
   - style.css
+
+# add github repo link
+repo_url: https://github.com/cgarciae/ciclo
