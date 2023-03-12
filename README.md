@@ -223,7 +223,7 @@ This approach allows for fine-grained control over the training process and enab
 For a more in-depth look at how to use `ciclo`, check out our [examples](./examples) folder which contains a set of python scripts that demonstrate how to use `ciclo` to train models using different APIs.
 
 ### JAX
-* [00 Linear Regression](https://github.com/cgarciae/ciclo/blob/main/examples/basic/00_linear_regression_pure_jax.py)
+* [00 Linear Regression](https://github.com/cgarciae/ciclo/blob/main/examples/jax/00_linear_regression_pure_jax.py)
 
 ### Flax
 * [01 Simple MNIST](https://github.com/cgarciae/ciclo/blob/main/examples/flax/01_mnist_simple.py)
