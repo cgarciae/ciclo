@@ -107,7 +107,7 @@ state, history, elapsed = ciclo.train_loop(
 ```
 
 ### Managed API 🧪
-The `managed` API aims to simplify the process of creating JAX programs for common patterns, such as `jit`, data parallelism with `pmap`, etc. To use this API, you need to define a compatible state type, which can be easily achieved by inheriting from `managed.ManagedState`.
+The `managed` API aims to simplify the process of creating JAX programs for common patterns, such as `jit`, data parallelism with `pmap`, etc. To use this API, you need to define a compatible state type, which can be easily achieved by creating an instance of `managed.ManagedState` or a subclass of it.
 
 ```python
 from ciclo import managed
