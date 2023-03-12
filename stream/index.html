@@ -1690,7 +1690,7 @@ def test_step(state, batch):
     <span class="n">ds_train</span><span class="o">.</span><span class="n">as_numpy_iterator</span><span class="p">(),</span>
     <span class="p">{</span>
         <span class="n">ciclo</span><span class="o">.</span><span class="n">every</span><span class="p">(</span><span class="mi">1</span><span class="p">):</span> <span class="n">train_step</span><span class="p">,</span>
-        <span class="n">ciclo</span><span class="o">.</span><span class="n">every</span><span class="p">(</span><span class="mi">1000</span><span class="p">,</span> <span class="n">steps_offset</span><span class="o">=</span><span class="mi">100</span><span class="p">):</span> <span class="p">[</span>
+        <span class="n">ciclo</span><span class="o">.</span><span class="n">after</span><span class="p">(</span><span class="n">steps</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span><span class="o">.</span><span class="n">every</span><span class="p">(</span><span class="mi">1000</span><span class="p">):</span> <span class="p">[</span>
             <span class="n">reset_metrics</span><span class="p">,</span>
             <span class="n">ciclo</span><span class="o">.</span><span class="n">inner_loop</span><span class="p">(</span>
                 <span class="s2">&quot;valid&quot;</span><span class="p">,</span>
@@ -1716,7 +1716,7 @@ state, history, elapsed = ciclo.loop(
     ds_train.as_numpy_iterator(),
     {
         ciclo.every(1): train_step,
-        ciclo.every(1000, steps_offset=100): [
+        ciclo.after(steps=100).every(1000): [
             reset_metrics,
             ciclo.inner_loop(
                 "valid",

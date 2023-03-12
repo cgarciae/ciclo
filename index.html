@@ -263,6 +263,13 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#haiku" class="md-nav__link">
+    Haiku
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#equinox" class="md-nav__link">
     Equinox
   </a>
@@ -416,6 +423,13 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#haiku" class="md-nav__link">
+    Haiku
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#equinox" class="md-nav__link">
     Equinox
   </a>
@@ -445,7 +459,7 @@
 <p><a href="https://codecov.io/gh/cgarciae/ciclo"><img alt="codecov" src="https://codecov.io/gh/cgarciae/ciclo/branch/main/graph/badge.svg?token=3IKEUAU3C8" /></a></p>
 <h1 id="ciclo">🌀 Ciclo</h1>
 <p><em>A functional training loops library for JAX</em></p>
-<p><code>ciclo</code> provides a set of utilities and abstractions to build complex training loops with any JAX framework. <code>ciclo</code> defines a set of building blocks that naturally compose together and scale up to build higher-level abstractions.</p>
+<p><code>ciclo</code> provides a set of utilities and abstractions to build complex training loops with any JAX framework. <code>ciclo</code> defines a set of building blocks that naturally compose together and scale up to build higher-level abstractions, ranging from low-level custom training loops to Keras-like training APIs.</p>
 <p><strong>Features</strong></p>
 <p>✔️ Training utilities <br>
 ✔️ Loop language <br>
@@ -527,7 +541,7 @@ Once you've installed Ciclo, you can import it into your Python script:</p>
 <div class="highlight"><pre><span></span><code>80/100 [=====================&gt;.....] - ETA: 42s - accuracy: 0.6148 - loss: 1.537120
 </code></pre></div></p>
 <h3 id="managed-api">Managed API 🧪</h3>
-<p>The <code>managed</code> API aims to simplify the process of creating JAX programs for common patterns, such as <code>jit</code>, data parallelism with <code>pmap</code>, etc. To use this API, you need to define a compatible state type, which can be easily achieved by inheriting from <code>managed.ManagedState</code>.</p>
+<p>The <code>managed</code> API aims to simplify the process of creating JAX programs for common patterns, such as <code>jit</code>, data parallelism with <code>pmap</code>, etc. To use this API, you need to define a compatible state type, which can be easily achieved by creating an instance of <code>managed.ManagedState</code> or a subclass of it.</p>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span> <span class="nn">ciclo</span> <span class="kn">import</span> <span class="n">managed</span>
 
 <span class="n">state</span> <span class="o">=</span> <span class="n">managed</span><span class="o">.</span><span class="n">ManagedState</span><span class="o">.</span><span class="n">create</span><span class="p">(</span>
@@ -627,6 +641,10 @@ This approach allows for fine-grained control over the training process and enab
 <li><a href="https://github.com/cgarciae/ciclo/blob/main/examples/flax/03_mnist_manual_iteration.py">03 Manual Iteration</a></li>
 <li><a href="https://github.com/cgarciae/ciclo/blob/main/examples/flax/04_mnist_managed_api.py">04 Managed API</a></li>
 <li><a href="https://github.com/cgarciae/ciclo/blob/main/examples/flax/05_mnist_flax_state.py">05 Using create_flax_state</a></li>
+</ul>
+<h3 id="haiku">Haiku</h3>
+<ul>
+<li><a href="https://github.com/cgarciae/ciclo/blob/main/examples/haiku/01_mnist_haiku.py">Simple MNIST</a></li>
 </ul>
 <h3 id="equinox">Equinox</h3>
 <ul>
