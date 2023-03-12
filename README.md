@@ -232,5 +232,8 @@ For a more in-depth look at how to use `ciclo`, check out our [examples](./examp
 * [04 Managed API](https://github.com/cgarciae/ciclo/blob/main/examples/flax/04_mnist_managed_api.py)
 * [05 Using create_flax_state](https://github.com/cgarciae/ciclo/blob/main/examples/flax/05_mnist_flax_state.py)
 
+### Haiku
+* [Simple MNIST](https://github.com/cgarciae/ciclo/blob/main/examples/haiku/01_mnist_haiku.py)
+
 ### Equinox
 * [Simple MNIST](https://github.com/cgarciae/ciclo/blob/main/examples/equinox/01_mnist_equinox.py)

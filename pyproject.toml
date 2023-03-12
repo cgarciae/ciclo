@@ -25,6 +25,7 @@ tensorflow-datasets = ">=4.0.0"
 clu = ">=0.0.8"
 equinox = ">=0.10.1"
 scipy = "!=1.10.1"
+dm-haiku = "^0.0.9"
 
 [tool.poetry.group.docs.dependencies]
 mkdocs-material = ">=8.5.10"
