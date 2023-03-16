@@ -6,7 +6,7 @@ authors = ["Cristian Garcia <cgarcia.e88@gmail.com>"]
 license = "MIT"
 
 [tool.poetry.dependencies]
-python = ">=3.8,<3.11"
+python = ">=3.8,<3.12"
 jax = ">=0.4.0"
 jaxlib = ">=0.4.0"
 flax = ">=0.6.0"
