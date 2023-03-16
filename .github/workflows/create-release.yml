@@ -9,11 +9,11 @@ jobs:
     name: Create Release
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout 🛎️
-        uses: actions/checkout@v2
-
+      - name: Check out the code
+        uses: actions/checkout@v3
+        
       - name: Set up Python 3.8
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: 3.8
 
@@ -21,7 +21,7 @@ jobs:
         id: setup
         run: |
           # install python dependencies
-          pip install typer==0.4.0
+          pip install typer==0.4.0 click==8.0.3
 
           # variables
           RELEASE_VERSION='${{ github.ref_name }}'
@@ -57,20 +57,11 @@ jobs:
           # delete branch
           git push -d origin ${{ github.ref_name }}
         
-      - name: Build Changelog
-        id: github_release
-        uses: mikepenz/release-changelog-builder-action@v2.9.0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          toTag: ${{ steps.setup.outputs.RELEASE_VERSION }}
-
       - name: Create Release
         uses: actions/create-release@v1
         with:
           tag_name: ${{ steps.setup.outputs.RELEASE_VERSION }}
           release_name: ${{ steps.setup.outputs.RELEASE_VERSION }}
-          body: ${{ steps.github_release.outputs.changelog }}
           draft: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
