@@ -38,9 +38,9 @@ jobs:
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
 
-          # switch to master
-          git pull origin master
-          git checkout master
+          # switch to main
+          git pull origin main
+          git checkout main
 
           # update version
           python scripts/update_version.py $RELEASE_VERSION
@@ -50,7 +50,7 @@ jobs:
           git fetch --tags
           git tag $RELEASE_VERSION
 
-          # push to master
+          # push to main
           git push
           git push --tags
 
