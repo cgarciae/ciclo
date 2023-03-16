@@ -194,6 +194,8 @@ def test_loop(
     if tasks is None:
         tasks = {}
 
+    # create a copy of tasks to avoid modifying the original
+    tasks = tasks.copy()
     additionl_tasks: Dict[ScheduleLike, CallbackOrList] = {}
     named_tasks: Dict[str, CallbackOrList] = {}
     for schedule in list(tasks.keys()):
