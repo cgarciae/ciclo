@@ -2145,31 +2145,30 @@ typing-extensions = ">=3.10.0"
 
 [[package]]
 name = "orbax"
-version = "0.1.4"
+version = "0.1.3"
 description = "Orbax"
 category = "main"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "orbax-0.1.4-py3-none-any.whl", hash = "sha256:fe074bb1c0dfa302e03613c18febdd81191438d21cf393e962e3042a49819b08"},
-    {file = "orbax-0.1.4.tar.gz", hash = "sha256:b2077e8814519393a4179715b6420b36f93f1bccff5fafc8e5a5307d890d4dd0"},
+    {file = "orbax-0.1.3-py3-none-any.whl", hash = "sha256:a5268b372f28dd085ef1c400f0eb7514fd235c719989b5caa145f1ae5773811f"},
+    {file = "orbax-0.1.3.tar.gz", hash = "sha256:e65171df1734da28478d8a2f2da837416e7c7a026a6280dc93264324ea40df5a"},
 ]
 
 [package.dependencies]
 absl-py = "*"
 cached_property = "*"
 etils = "*"
+flax = "*"
 importlib_resources = "*"
-jax = ">=0.4.6"
+jax = ">=0.4.1"
 jaxlib = "*"
-msgpack = "*"
 numpy = "*"
 pyyaml = "*"
 tensorstore = ">=0.1.20"
-typing_extensions = "*"
 
 [package.extras]
-dev = ["flax", "pytest", "pytest-xdist"]
+dev = ["pytest", "pytest-xdist"]
 
 [[package]]
 name = "packaging"
@@ -3943,4 +3942,4 @@ testing = ["big-O", "flake8 (<5)", "jaraco.functools", "jaraco.itertools", "more
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.8,<3.12"
-content-hash = "bc82e4f57f2ad81b5c6e3aac8e1240434bc8782c2271009a558887931eb697dc"
+content-hash = "3da05c5e6414d63a33faa194b0a90e8aa3dd3fcd7f1bea9152270e3f2a887171"
