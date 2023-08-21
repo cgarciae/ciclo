@@ -93,7 +93,7 @@ class TestLoops:
             stop=1,
         )
 
-        assert history[0]['metrics']['a_test'] == 4
+        assert history[0]["metrics"]["a_test"] == 4
 
         state = {"a": 0}
 
@@ -109,4 +109,4 @@ class TestLoops:
             inner_loop_kwargs={"aggregation": "sum"},
         )
 
-        assert history[0]['metrics']['a_test'] == 10
+        assert history[0]["metrics"]["a_test"] == 10
