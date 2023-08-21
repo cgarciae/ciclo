@@ -23,7 +23,8 @@ from ciclo.types import Batch, S
 from ciclo.utils import get_batch_size, is_scalar
 
 
-InnerLoopAggregation = Literal["last", "mean", "sum", "min", "max", "first"]
+AggregationFn = Callable[[List[Any]], Any]
+InnerLoopAggregation = Union[Literal["last", "mean", "sum", "min", "max", "first"], AggregationFn]
 
 
 def unavailable_dependency(msg: str) -> Any:
@@ -117,11 +118,16 @@ class inner_loop(LoopCallbackBase[S]):
     def __loop_callback__(self, loop_state: LoopState[S]) -> CallbackOutput[S]:
         return self(loop_state.state)
 
-    def __get_aggregation_fn(self, collection: Collection) -> Callable[[List[Any]], Any]:
-        if isinstance(self.aggregation, str):
-            aggregation = self.aggregation
-        else:
+    def __get_aggregation_fn(self, collection: Collection) -> AggregationFn:
+        if isinstance(self.aggregation, Mapping):
             aggregation = self.aggregation.get(collection, "last")
+            error_message = f"The aggregation ({aggregation}) for collection {collection} must be a str or Callable."
+        else:
+            aggregation = self.aggregation
+            error_message = f"The aggregation ({aggregation}) must be a str or Callable."
+
+        if not (isinstance(aggregation, str) or isinstance(aggregation, Callable)):
+            raise ValueError(error_message)
 
         if aggregation == "last":
             return lambda x: x[-1]
@@ -135,6 +141,8 @@ class inner_loop(LoopCallbackBase[S]):
             return max
         elif aggregation == "first":
             return lambda x: x[0]
+        elif isinstance(aggregation, Callable):
+            return aggregation
         else:
             raise ValueError(f"Invalid aggregation: {aggregation}")
 

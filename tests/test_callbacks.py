@@ -55,6 +55,26 @@ class TestCallbacks:
             },
         }
 
+    def test_inner_loop_callable_aggregation(self):
+        inner_loop = ciclo.callbacks.inner_loop(
+            "test",
+            dummy_inner_loop_fn,
+            aggregation=sum,
+        )
+
+        log_history, _ = inner_loop(None)
+
+        assert log_history == {
+            "stateful_metrics": {
+                "A_test": jnp.array(1.0, dtype=jnp.float32),
+                "B_test": jnp.array(1.0, dtype=jnp.float32),
+            },
+            "metrics": {
+                "C_test": jnp.array(1.0, dtype=jnp.float32),
+                "D_test": jnp.array(0.0, dtype=jnp.float32),
+            },
+        }
+
     def test_inner_loop_mean_aggregation(self):
         inner_loop = ciclo.callbacks.inner_loop(
             "test",
