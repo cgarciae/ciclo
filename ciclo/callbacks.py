@@ -4,12 +4,12 @@ import os
 from dataclasses import dataclass, replace
 from datetime import datetime
 from enum import Enum, auto
-from typing import Any, Callable, Dict, Optional, Tuple, Union, overload
+from typing import Any, Callable, Dict, List, Literal, Mapping, Optional, Tuple, Union, overload
 
 from pkbar import Kbar
 from tqdm import tqdm
 
-from ciclo.logging import Logs
+from ciclo.logging import Collection, Entry, History, Logs
 from ciclo.loops.loop import (
     CallbackOutput,
     LoopCallbackBase,
@@ -21,6 +21,9 @@ from ciclo.schedules import every
 from ciclo.timetracking import Elapsed, Period
 from ciclo.types import Batch, S
 from ciclo.utils import get_batch_size, is_scalar
+
+
+InnerLoopAggregation = Literal["last", "mean", "sum", "min", "max", "first"]
 
 
 def unavailable_dependency(msg: str) -> Any:
@@ -37,6 +40,20 @@ def unavailable_dependency(msg: str) -> Any:
 class OptimizationMode(str, Enum):
     min = auto()
     max = auto()
+
+
+def _transpose_history(log_history: History) -> Mapping[Collection, Mapping[Entry, List[Any]]]:
+    """Convert a list of (nested) log dictionaries into a (nested) dictionary of lists."""
+    result = {}
+    for log_dict in log_history:
+        for collection, entries in log_dict.items():
+            if collection not in result:
+                result[collection] = {}
+            for entry, value in entries.items():
+                if entry not in result[collection]:
+                    result[collection][entry] = []
+                result[collection][entry].append(value)
+    return result
 
 
 class inner_loop(LoopCallbackBase[S]):
@@ -65,6 +82,9 @@ class inner_loop(LoopCallbackBase[S]):
         maybe_loop_fn: Optional[Callable[[S], LoopOutput[S]]] = None,
         *,
         output_state: bool = False,
+        aggregation: Union[
+            InnerLoopAggregation, Mapping[Collection, InnerLoopAggregation]
+        ] = "last",
     ):
         if isinstance(name_or_loop_fn, str):
             assert maybe_loop_fn is not None
@@ -75,17 +95,20 @@ class inner_loop(LoopCallbackBase[S]):
             self.name = None
             self.loop_fn = name_or_loop_fn
         self.output_state = output_state
+        self.aggregation = aggregation
 
     def __call__(self, state: S) -> Tuple[Logs, S]:
         inner_state, log_history, _ = self.loop_fn(state)
-        logs = log_history[-1] if len(log_history) > 0 else Logs()
+        logs = _transpose_history(log_history)
         logs = Logs(
             {
                 collection: {
-                    k + f"_{self.name}" if self.name else k: v
-                    for k, v in values.items()
+                    entry + f"_{self.name}"
+                    if self.name
+                    else entry: self.__get_aggregation_fn(collection)(values)
+                    for entry, values in entries.items()
                 }
-                for collection, values in logs.items()
+                for collection, entries in logs.items()
                 if collection != "elapsed"
             }
         )
@@ -93,6 +116,27 @@ class inner_loop(LoopCallbackBase[S]):
 
     def __loop_callback__(self, loop_state: LoopState[S]) -> CallbackOutput[S]:
         return self(loop_state.state)
+
+    def __get_aggregation_fn(self, collection: Collection) -> Callable[[List[Any]], Any]:
+        if isinstance(self.aggregation, str):
+            aggregation = self.aggregation
+        else:
+            aggregation = self.aggregation[collection]
+
+        if aggregation == "last":
+            return lambda x: x[-1]
+        elif aggregation == "mean":
+            return lambda x: sum(x) / len(x)
+        elif aggregation == "sum":
+            return sum
+        elif aggregation == "min":
+            return min
+        elif aggregation == "max":
+            return max
+        elif aggregation == "first":
+            return lambda x: x[0]
+        else:
+            raise ValueError(f"Invalid aggregation: {aggregation}")
 
 
 if importlib.util.find_spec("tensorflow") is not None:

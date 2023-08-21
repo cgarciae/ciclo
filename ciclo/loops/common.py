@@ -73,6 +73,7 @@ def train_loop(
     catch_keyboard_interrupt: bool = True,
     metadata: Optional[Any] = None,
     batch_size_fn: Optional[Callable[[List[Tuple[int, ...]]], int]] = None,
+    inner_loop_kwargs: Optional[Dict[str, Any]] = None,
 ) -> LoopOutput[S]:
     if tasks is None:
         tasks = {}
@@ -82,6 +83,9 @@ def train_loop(
 
     if isinstance(test_duration, int):
         test_duration = Period.create(steps=test_duration)
+
+    if inner_loop_kwargs is None:
+        inner_loop_kwargs = {}
 
     additionl_tasks: Dict[ScheduleLike, CallbackOrList] = {}
     named_tasks: Dict[str, CallbackOrList] = {}
@@ -145,6 +149,7 @@ def train_loop(
                         stop=test_duration,
                         batch_size_fn=batch_size_fn,
                     ),
+                    **inner_loop_kwargs,
                 )
             )
         test_tasks += named_tasks.pop(ON_EPOCH_END, [])
