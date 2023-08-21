@@ -98,7 +98,7 @@ class TestCallbacks:
         inner_loop = ciclo.callbacks.inner_loop(
             "test",
             dummy_inner_loop_fn,
-            aggregation={"stateful_metrics": "first", "metrics": "last"},
+            aggregation={"stateful_metrics": "first"},
         )
 
         log_history, _ = inner_loop(None)

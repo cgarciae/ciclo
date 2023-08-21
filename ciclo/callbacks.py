@@ -121,7 +121,7 @@ class inner_loop(LoopCallbackBase[S]):
         if isinstance(self.aggregation, str):
             aggregation = self.aggregation
         else:
-            aggregation = self.aggregation[collection]
+            aggregation = self.aggregation.get(collection, "last")
 
         if aggregation == "last":
             return lambda x: x[-1]
