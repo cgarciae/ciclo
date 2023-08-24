@@ -33,7 +33,6 @@ from ciclo.timetracking import Elapsed, Period
 from ciclo.types import Batch, S
 from ciclo.utils import get_batch_size, is_scalar
 
-
 AggregationFn = Callable[[List[Any]], Any]
 InnerLoopAggregation = Union[
     Literal["last", "mean", "sum", "min", "max", "first"], AggregationFn
@@ -57,7 +56,7 @@ class OptimizationMode(str, Enum):
 
 
 def _transpose_history(
-        log_history: History
+    log_history: History,
 ) -> Mapping[Collection, Mapping[Entry, List[Any]]]:
     """Convert a list of (nested) log dictionaries into a (nested) dictionary of lists."""
     result = {}
@@ -136,12 +135,12 @@ class inner_loop(LoopCallbackBase[S]):
     def __get_aggregation_fn(self, collection: Collection) -> AggregationFn:
         if isinstance(self.aggregation, Mapping):
             aggregation = self.aggregation.get(collection, "last")
-            error_message = (
-                f"The aggregation ({aggregation}) for collection {collection} must be a str or Callable."
-            )
+            error_message = f"The aggregation ({aggregation}) for collection {collection} must be a str or Callable."
         else:
             aggregation = self.aggregation
-            error_message = f"The aggregation ({aggregation}) must be a str or Callable."
+            error_message = (
+                f"The aggregation ({aggregation}) must be a str or Callable."
+            )
 
         if not (isinstance(aggregation, str) or isinstance(aggregation, Callable)):
             raise ValueError(error_message)
