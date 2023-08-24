@@ -4,7 +4,18 @@ import os
 from dataclasses import dataclass, replace
 from datetime import datetime
 from enum import Enum, auto
-from typing import Any, Callable, Dict, List, Literal, Mapping, Optional, Tuple, Union, overload
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    List,
+    Literal,
+    Mapping,
+    Optional,
+    Tuple,
+    Union,
+    overload,
+)
 
 from pkbar import Kbar
 from tqdm import tqdm
@@ -24,7 +35,9 @@ from ciclo.utils import get_batch_size, is_scalar
 
 
 AggregationFn = Callable[[List[Any]], Any]
-InnerLoopAggregation = Union[Literal["last", "mean", "sum", "min", "max", "first"], AggregationFn]
+InnerLoopAggregation = Union[
+    Literal["last", "mean", "sum", "min", "max", "first"], AggregationFn
+]
 
 
 def unavailable_dependency(msg: str) -> Any:
@@ -43,7 +56,9 @@ class OptimizationMode(str, Enum):
     max = auto()
 
 
-def _transpose_history(log_history: History) -> Mapping[Collection, Mapping[Entry, List[Any]]]:
+def _transpose_history(
+        log_history: History
+) -> Mapping[Collection, Mapping[Entry, List[Any]]]:
     """Convert a list of (nested) log dictionaries into a (nested) dictionary of lists."""
     result = {}
     for log_dict in log_history:
@@ -121,7 +136,9 @@ class inner_loop(LoopCallbackBase[S]):
     def __get_aggregation_fn(self, collection: Collection) -> AggregationFn:
         if isinstance(self.aggregation, Mapping):
             aggregation = self.aggregation.get(collection, "last")
-            error_message = f"The aggregation ({aggregation}) for collection {collection} must be a str or Callable."
+            error_message = (
+                f"The aggregation ({aggregation}) for collection {collection} must be a str or Callable."
+            )
         else:
             aggregation = self.aggregation
             error_message = f"The aggregation ({aggregation}) must be a str or Callable."
