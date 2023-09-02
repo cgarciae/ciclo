@@ -105,12 +105,12 @@ state, history, *_ = ciclo.loop(
             ciclo.checkpoint(
                 f"logdir/{Path(__file__).stem}/{int(time())}",
                 monitor="accuracy_valid",
-                mode="max",
+                optimization_mode="max",
                 keep=3,
             ),
             ciclo.early_stopping(
                 monitor="accuracy_valid",
-                mode="max",
+                optimization_mode="max",
                 patience=eval_steps * 2,
             ),
             reset_metrics,

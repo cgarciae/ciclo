@@ -55,7 +55,7 @@ state, history, _ = ciclo.train_loop(
         ciclo.checkpoint(
             f"logdir/{Path(__file__).stem}/{int(time())}",
             monitor="accuracy_test",
-            mode="max",
+            optimization_mode="max",
         ),
     ],
     test_dataset=lambda: ds_test.as_numpy_iterator(),
