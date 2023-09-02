@@ -165,7 +165,7 @@ def loop(
         )
         for schedule, callbacks in tasks.items()
     ]
-    # prone empty tasks
+    # prune empty tasks
     schedule_callbacks = [x for x in schedule_callbacks if len(x[1]) > 0]
 
     try:
