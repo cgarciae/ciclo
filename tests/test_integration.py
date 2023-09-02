@@ -177,11 +177,11 @@ class TestIntegration:
                         ciclo.checkpoint(
                             f"{logdir}/model",
                             monitor="accuracy_valid",
-                            mode="max",
+                            optimization_mode="max",
                         ),
                         ciclo.early_stopping(
                             monitor="accuracy_valid",
-                            mode="max",
+                            optimization_mode="max",
                             patience=100,
                         ),
                     ],
@@ -230,7 +230,7 @@ class TestIntegration:
                 ciclo.checkpoint(
                     f"logdir/{Path(__file__).stem}/{int(time())}",
                     monitor="accuracy_test",
-                    mode="max",
+                    optimization_mode="max",
                 ),
             ],
             test_dataset=lambda: get_tuple_dataset(batch_size),

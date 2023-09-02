@@ -117,7 +117,7 @@ state, history, _ = ciclo.train_loop(
         ciclo.checkpoint(
             f"logdir/{Path(__file__).stem}/{int(time())}",
             monitor="accuracy_test",
-            mode="max",
+            optimization_mode="max",
         ),
         ciclo.keras_bar(total=total_steps),
     ],

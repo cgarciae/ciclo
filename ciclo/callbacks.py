@@ -55,6 +55,11 @@ class OptimizationMode(str, Enum):
     max = auto()
 
 
+class DeltaMode(str, Enum):
+    absolute = auto()
+    relative = auto()
+
+
 def _transpose_history(
     log_history: History,
 ) -> Mapping[Collection, Mapping[Entry, List[Any]]]:
@@ -176,17 +181,17 @@ if importlib.util.find_spec("tensorflow") is not None:
             keep_every_n_steps: Optional[int] = None,
             async_manager: Optional[flax_checkpoints.AsyncManager] = None,
             monitor: Optional[str] = None,
-            mode: Union[str, OptimizationMode] = "min",
+            optimization_mode: Union[str, OptimizationMode] = "min",
         ):
-            if isinstance(mode, str):
-                mode = OptimizationMode[mode]
+            if isinstance(optimization_mode, str):
+                optimization_mode = OptimizationMode[optimization_mode]
 
-            if mode not in OptimizationMode:
+            if optimization_mode not in OptimizationMode:
                 raise ValueError(
-                    f"Invalid mode: {mode}, expected one of {list(OptimizationMode)}"
+                    f"Invalid optimization_mode: {optimization_mode}, expected one of {list(OptimizationMode)}"
                 )
             else:
-                self.mode = mode
+                self.optimization_mode = optimization_mode
 
             self.ckpt_dir = ckpt_dir
             self.prefix = prefix
@@ -195,7 +200,7 @@ if importlib.util.find_spec("tensorflow") is not None:
             self.keep_every_n_steps = keep_every_n_steps
             self.async_manager = async_manager
             self.monitor = monitor
-            self.minimize = self.mode == OptimizationMode.min
+            self.minimize = self.optimization_mode == OptimizationMode.min
             self._best: Optional[float] = None
 
         def __call__(
@@ -227,7 +232,9 @@ if importlib.util.find_spec("tensorflow") is not None:
                 ):
                     self._best = value
                     step_or_metric = (
-                        value if self.mode == OptimizationMode.max else -value
+                        value
+                        if self.optimization_mode == OptimizationMode.max
+                        else -value
                     )
                 else:
                     save_checkpoint = False
@@ -264,30 +271,69 @@ class early_stopping(LoopCallbackBase[S]):
         self,
         monitor: str,
         patience: Union[int, Period],
-        min_delta: float = 0,
-        mode: Union[str, OptimizationMode] = "min",
+        initial_patience: Optional[Union[int, Period]] = None,
+        min_delta: Optional[float] = None,
+        delta_mode: Union[str, DeltaMode] = "absolute",
+        optimization_mode: Union[str, OptimizationMode] = "min",
         baseline: Optional[float] = None,
         restore_best_weights: bool = False,
     ):
-        if isinstance(mode, str):
-            mode = OptimizationMode[mode]
+        if initial_patience is None:
+            initial_patience = 1
 
-        if mode not in OptimizationMode:
+        if min_delta is None:
+            min_delta = 0.0
+
+        if isinstance(optimization_mode, str):
+            optimization_mode = OptimizationMode[optimization_mode]
+
+        if optimization_mode not in OptimizationMode:
             raise ValueError(
-                f"Invalid mode: {mode}, expected one of {list(OptimizationMode)}"
+                f"Invalid mode: {optimization_mode}, expected one of {list(OptimizationMode)}"
             )
-        else:
-            self.mode = mode
+
+        if isinstance(delta_mode, str):
+            delta_mode = DeltaMode[delta_mode]
+
+        if delta_mode not in DeltaMode:
+            raise ValueError(
+                f"Invalid mode: {delta_mode}, expected one of {list(DeltaMode)}"
+            )
+
+        if (
+            optimization_mode == OptimizationMode.min
+            and delta_mode == DeltaMode.absolute
+        ):
+            self.improvement_fn = lambda current, best: current < best - min_delta
+        elif (
+            optimization_mode == OptimizationMode.min
+            and delta_mode == DeltaMode.relative
+        ):
+            self.improvement_fn = lambda current, best: current < best * (1 - min_delta)
+        elif (
+            optimization_mode == OptimizationMode.max
+            and delta_mode == DeltaMode.absolute
+        ):
+            self.improvement_fn = lambda current, best: current > best + min_delta
+        elif (
+            optimization_mode == OptimizationMode.max
+            and delta_mode == DeltaMode.relative
+        ):
+            self.improvement_fn = lambda current, best: current > best * (1 + min_delta)
 
         self.monitor = monitor
         self.patience = (
             patience if isinstance(patience, Period) else Period.create(patience)
         )
+        self.initial_patience = (
+            initial_patience
+            if isinstance(initial_patience, Period)
+            else Period.create(initial_patience)
+        )
         self.min_delta = min_delta
-        self.mode = mode
         self.baseline = baseline
         self.restore_best_weights = restore_best_weights
-        self.minimize = self.mode == OptimizationMode.min
+        self.minimize = optimization_mode == OptimizationMode.min
         self._best = baseline
         self._best_state = None
         self._elapsed_start: Optional[Elapsed] = None
@@ -306,16 +352,15 @@ class early_stopping(LoopCallbackBase[S]):
         except KeyError:
             raise ValueError(f"Monitored value '{self.monitor}' not found in logs")
 
-        if (
-            self._best is None
-            or (self.minimize and value < self._best)
-            or (not self.minimize and value > self._best)
-        ):
+        if self._best is None or self.improvement_fn(value, self._best):
             self._best = value
             self._best_state = state
             self._elapsed_start = elapsed
 
-        if elapsed - self._elapsed_start >= self.patience:
+        if (
+            elapsed - self._elapsed_start >= self.patience
+            and elapsed >= self.initial_patience
+        ):
             if self.restore_best_weights and self._best_state is not None:
                 state = self._best_state
             stop_iteration = True
