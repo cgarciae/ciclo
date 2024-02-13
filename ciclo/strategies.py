@@ -18,7 +18,7 @@ class Dataclass(Protocol):
 
 @runtime_checkable
 class HasKey(Protocol):
-    key: jax.random.KeyArray
+    key: jax.Array
 
 
 StrategyConstructor = Callable[[], "Strategy"]
@@ -130,7 +130,7 @@ class Strategy(ABC):
     def lift_batch(self, data: A) -> A:
         return data
 
-    def lift_key(self, key: jax.random.KeyArray) -> jax.random.KeyArray:
+    def lift_key(self, key: jax.Array) -> jax.Array:
         return key
 
     def lift_batch_size(self, batch_size: int) -> int:
@@ -215,7 +215,7 @@ class DataParallel(Strategy):
         )
         return data
 
-    def lift_key(self, key: jax.random.KeyArray) -> jax.random.KeyArray:
+    def lift_key(self, key: jax.Array) -> jax.Array:
         return jax.random.split(key, jax.local_device_count())
 
     def lift_batch_size(self, batch_size: int) -> int:

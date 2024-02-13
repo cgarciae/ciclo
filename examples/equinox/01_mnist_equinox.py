@@ -22,7 +22,7 @@ ds_train = ds_train.shuffle(1024).batch(batch_size).repeat().prefetch(1)
 class LinearClassifier(eqx.Module):
     linear: eqx.nn.Linear
 
-    def __init__(self, *, key: jax.random.KeyArray):
+    def __init__(self, *, key: jax.Array):
         self.linear = eqx.nn.Linear(784, 10, key=key)
 
     def __call__(self, x):

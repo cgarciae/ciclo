@@ -28,7 +28,7 @@ class TestEquinox:
         class LinearClassifier(eqx.Module):
             linear: eqx.nn.Linear
 
-            def __init__(self, *, key: jax.random.KeyArray):
+            def __init__(self, *, key: jax.Array):
                 self.linear = eqx.nn.Linear(input_shape, 10, key=key)
 
             def __call__(self, x):
