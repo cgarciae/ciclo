@@ -126,7 +126,7 @@ class Metrics(struct.PyTreeNode, MetricLike):
 class FlaxState(Generic[M], managed.ManagedState):
     """State for Flax models."""
 
-    key: jax.random.KeyArray
+    key: jax.Array
     batch_stats: Optional[FrozenVariableDict]
     variables: FrozenVariableDict
     stateful_metrics: Metrics
@@ -149,7 +149,7 @@ class FlaxState(Generic[M], managed.ManagedState):
 
     def apply(
         self,
-        key: jax.random.KeyArray,
+        key: jax.Array,
         inputs: Any,
         training: bool,
     ):
@@ -317,7 +317,7 @@ class FlaxState(Generic[M], managed.ManagedState):
 def init_module(
     module: nn.Module,
     inputs: Any,
-    key: jax.random.KeyArray,
+    key: jax.Array,
     mutable_init: CollectionFilter,
     rngs_init: Sequence[str],
     method_init: Union[str, Callable[..., Any]],
@@ -346,7 +346,7 @@ def create_flax_state(
     module: M,
     inputs: Any,
     tx: optax.GradientTransformation,
-    key: Optional[jax.random.KeyArray] = None,
+    key: Optional[jax.Array] = None,
     losses: Optional[Dict[str, Loss]] = None,
     metrics: Optional[Dict[str, Any]] = None,
     mutable_init: CollectionFilter = True,
@@ -585,12 +585,12 @@ class KeySeq:
     ```
     """
 
-    key: jax.random.KeyArray
+    key: jax.Array
     index: int
 
     def __init__(
         self,
-        key: Union[jax.random.KeyArray, int],
+        key: Union[jax.Array, int],
     ):
         """
         Arguments:
@@ -600,7 +600,7 @@ class KeySeq:
         self.key = jax.random.PRNGKey(key) if isinstance(key, int) else key
         self.index = 0
 
-    def next(self) -> jax.random.KeyArray:
+    def next(self) -> jax.Array:
         """
         Return a new PRNGKey and updates the internal rng state.
 

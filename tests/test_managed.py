@@ -17,7 +17,7 @@ class GaussianDiffusion(struct.PyTreeNode):
 
 
 class State(managed.ManagedState):
-    key: jax.random.KeyArray
+    key: jax.Array
     ema_params: Any
     process: GaussianDiffusion
     config: int = struct.field(pytree_node=False)
