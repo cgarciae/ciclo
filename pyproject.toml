@@ -16,7 +16,6 @@ einop = "*"
 numpy = "*" 
 # jax-metrics = {path = "../jax_metrics"}
 jax-metrics = "^0.2.1"
-orbax = "<0.1.4"
 
 [tool.poetry.group.test.dependencies]
 pytest = ">=7.1.3"
